@@ -10,202 +10,260 @@ import { AnimationStore } from "../stores/Store";
  * @extends Container
  */
 export default class Game extends Container {
+  constructor(...args) {
+    super(args);
 
-    constructor(...args) {
-        super(args);
+    this.tileSize = 50;
+    this.tileX = 10;
+    this.tileY = 10;
 
-        this.tileSize = 50;
-        this.tileX = 10;
-        this.tileY = 10;
+    this.tiles = [];
+    this.enemies = [];
+    this.towers = [];
 
-        this.tiles = [];
-        this.enemies = [];
-        this.towers = [];
+    this.addGrid();
 
-        this.addGrid();
+    this.addTower(3, 4);
+    this.addTower(1, 3);
+    this.addTower(6, 6);
 
-        this.addTower(3, 4);
-        this.addTower(1, 1, 1);
-        this.addTower(6, 6, 2);
+    let timer = 0;
+    let maxTime = 1;
 
-        let timer = 0;
-        const maxTime = 1;
+    // this.spawnEnemy();
 
-        AnimationStore.subscribe(() => {
+    AnimationStore.subscribe(() => {
+      timer += AnimationStore.getState().deltaTime;
 
-            timer += AnimationStore.getState().deltaTime;
+      if (timer > maxTime) {
+        timer -= maxTime;
+        maxTime -= 0.01;
+        maxTime = Math.max(maxTime, 0.5);
+        this.spawnEnemy();
+      }
+    });
+  }
 
-            if(timer > maxTime){
-                timer -= maxTime;
-                this.spawnEnemy();
-            }
-        });
+  spawnEnemy() {
+    this.addEnemy(0, 0, [
+      { x: 2, y: 0 },
+      { x: 2, y: 5 },
+      { x: 7, y: 5 },
+      { x: 7, y: 9 },
+    ]);
+  }
+
+  addGrid() {
+    this.grid = new Grid(this.tileX, this.tileY);
+
+    for (let i = 0; i < this.grid.size(); i++) {
+      const coord = this.grid.coord(i);
+      this.addTile(coord.x, coord.y);
     }
 
-    spawnEnemy(){
-        this.addEnemy(0, 0, [{x: 2, y: 0}, {x: 2, y: 5}, {x: 7, y: 5}, {x: 7, y: 9}]);
+    Store.subscribe(() => {
+      const {
+        width,
+        height,
+        canvasWidth,
+        canvasHeight,
+      } = Store.getState().Renderer;
+
+      this.resizeGrid(width, height, canvasWidth, canvasHeight);
+    });
+
+    this.resizeGrid(window.innerWidth, window.innerHeight);
+  }
+
+  resizeGrid(width, height, tw = 1920, th = 1080) {
+    this.position.x = width / 2 - (this.tileSize * this.tileX) / 2;
+    this.position.y = height / 2 - (this.tileSize * this.tileY) / 2;
+    this.width = this.tileX * this.tileSize;
+    this.height = this.tileY * this.tileSize;
+  }
+
+  addTile(x, y) {
+    let rectangle = new Graphics();
+    // rectangle.lineStyle(1, 0xFF3300, 1);
+    if (x % 2 == (y % 2 == 1 ? 0 : 1)) {
+      rectangle.beginFill(0x000011);
+    } else {
+      rectangle.beginFill(0x111122);
     }
 
-    addGrid() {
+    rectangle.drawRect(0, 0, this.tileSize, this.tileSize);
+    rectangle.endFill();
+    rectangle.x = x * this.tileSize;
+    rectangle.y = y * this.tileSize;
 
-        this.grid = new Grid(this.tileX, this.tileY);
+    // rectangle.on("mousedown", (e) => {
+    //   console.log("clicked", x, y, this.grid.index(x, y));
+    // });
 
-        for (let i = 0; i < this.grid.size(); i++) {
-            const coord = this.grid.coord(i);
-            this.addTile(coord.x, coord.y);
-        }
+    rectangle.interactive = true;
 
-        Store.subscribe(() => {
+    this.tiles.push(rectangle);
+    this.addChild(rectangle);
+  }
 
-            const {
-                width,
-                height,
-                canvasWidth,
-                canvasHeight
-            } = Store.getState().Renderer;
+  addEnemy(x, y, targets = []) {
+    const width = 10;
+    const speed = 50;
 
-            this.resizeGrid(width, height, canvasWidth, canvasHeight)
-        });
+    let rectangle = new Graphics();
+    rectangle.beginFill(0xffffff);
+    rectangle.drawRect(-width * 0.5, -width * 0.5, width, width);
+    // rectangle.drawRect(0, 0, width, width);
+    rectangle.endFill();
+    rectangle.interactive = true;
+    rectangle.pivot.set(width / 2, width / 2);
+    rectangle.x = x * this.tileSize + this.tileSize / 2;
+    rectangle.y = y * this.tileSize + this.tileSize / 2;
 
-        this.resizeGrid(window.innerWidth, window.innerHeight);
-    }
+    // rectangle.on("mousedown", (e) => {
+    //   console.log("clicked", x, y, this.grid.index(x, y));
+    // });
 
-    resizeGrid(width, height, tw = 1920, th = 1080) {
-        this.position.x = width / 2 - this.tileSize * this.tileX / 2;
-        this.position.y = height / 2 - this.tileSize * this.tileY / 2;
-        this.width = this.tileX * this.tileSize;
-        this.height = this.tileY * this.tileSize;
-    }
+    const enemy = {
+      sprite: rectangle,
+      health: 100,
+    };
 
-    addTile(x, y) {
+    this.enemies.push(enemy);
+    this.addChild(rectangle);
 
-        let rectangle = new Graphics();
-        // rectangle.lineStyle(1, 0xFF3300, 1);
-        if(x % 2 == (y %2 == 1 ? 0: 1)){
-            rectangle.beginFill(0x000011);
-        }else{
-            rectangle.beginFill(0x111122);
-        }
+    const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
+      const tick = AnimationStore.getState();
 
-        rectangle.drawRect(0, 0, this.tileSize, this.tileSize);
-        rectangle.endFill();
-        rectangle.x = x * this.tileSize;
-        rectangle.y = y * this.tileSize;
+      if (enemy.health <= 0 || targets.length <= 0) {
+        console.log("remove", enemy.health);
+        this.enemies.splice(this.enemies.indexOf(enemy), 1);
+        rectangle.destroy();
+        cancelAnimationStoreSubscription();
+        return;
+      }
 
-        rectangle.on('mousedown', e => {
-            console.log('clicked', x, y, this.grid.index(x, y));
-        });
-
-        rectangle.interactive = true;
-
-        this.tiles.push(rectangle);
-        this.addChild(rectangle);
-    }
-
-    addEnemy(x, y, targets = []) {
-
-        const width = 10;
-        const speed = 50;
-
-        let rectangle = new Graphics();
-        rectangle.beginFill(0xFFFFFF);
+      if (enemy.health < 50) {
+        rectangle.clear();
+        rectangle.beginFill(0xff0000);
         rectangle.drawRect(0, 0, width, width);
         rectangle.endFill();
-        rectangle.x = x * this.tileSize + (this.tileSize / 2) - width/2;
-        rectangle.y = y * this.tileSize + (this.tileSize / 2) - width/2;
+      } else if (enemy.health < 100) {
+        rectangle.clear();
+        rectangle.beginFill(0x00ff00);
+        rectangle.drawRect(0, 0, width, width);
+        rectangle.endFill();
+      } else if (enemy.health < 150) {
+        rectangle.clear();
+        rectangle.beginFill(0x0000ff);
+        rectangle.drawRect(0, 0, width, width);
+        rectangle.endFill();
+      }
 
-        rectangle.on('mousedown', e => {
-            console.log('clicked', x, y, this.grid.index(x, y));
-        });
+      const targetX = targets[0].x;
+      const targetY = targets[0].y;
 
-        rectangle.interactive = true;
+      const move = this.moveTowards(
+        rectangle.x,
+        rectangle.y,
+        targetX * this.tileSize + this.tileSize / 2,
+        targetY * this.tileSize + this.tileSize / 2,
+        speed * tick.deltaTime
+      );
+      rectangle.position.x += move.x;
+      rectangle.position.y += move.y;
 
-        this.enemies.push(rectangle);
-        this.addChild(rectangle);
+      if (move.x == 0 && move.y == 0) {
+        targets.shift();
+      }
+    });
+  }
 
-        const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
+  addTower(x, y, type = 0) {
+    const width = 30;
 
-            const tick = AnimationStore.getState();
+    const screenX = x * this.tileSize + this.tileSize / 2;
+    const screenY = y * this.tileSize + this.tileSize / 2;
 
-            if (targets.length <= 0) {
-                this.enemies.splice(this.enemies.indexOf(rectangle), 1);
-                rectangle.destroy();
-                cancelAnimationStoreSubscription();
-                return;
-            }
-
-            const targetX = targets[0].x;
-            const targetY = targets[0].y;
-
-            const move = this.moveTowards(rectangle.x,rectangle.y, targetX * this.tileSize + (this.tileSize / 2)-width/2, targetY * this.tileSize + (this.tileSize / 2)-width/2, speed * tick.deltaTime);
-            rectangle.position.x += move.x;
-            rectangle.position.y += move.y;
-
-            if(move.x == 0 && move.y == 0){
-                targets.shift();
-            }
-        });
+    let rectangle = new Graphics();
+    switch (type) {
+      case 2:
+        rectangle.lineStyle(1, 0xffffff, 1);
+        rectangle.drawCircle(
+          screenX + width / 2,
+          screenY + width / 2,
+          width / 2
+        );
+        break;
+      case 1:
+        rectangle.lineStyle(1, 0xffffff, 1);
+        // rectangle.drawRect(screenX, screenY, width, width);
+        rectangle.drawStar(
+          screenX + width / 2,
+          screenY + width / 2,
+          3,
+          width / 2
+        );
+        break;
+      default:
+        rectangle.lineStyle(1, 0xffffff, 1);
+        rectangle.drawRect(-width * 0.5, -width * 0.5, width, width);
+        break;
     }
 
-    addTower(x,y, type = 0){
+    rectangle.position.x = screenX;
+    rectangle.position.y = screenY;
 
-        const width = 30;
+    const tower = {
+      sprite: rectangle,
+    };
 
-        const screenX = x * this.tileSize+ (this.tileSize / 2) - width/2;
-        const screenY = y * this.tileSize+ (this.tileSize / 2) - width/2;
+    this.addChild(rectangle);
+    this.towers.push(tower);
 
-        let rectangle = new Graphics();
-        switch(type){
-            case 2:
-                rectangle.lineStyle(1, 0xFFFFFF, 1);
-                rectangle.drawCircle(screenX + (width/2), screenY + (width/2), width/2);
-                break;
-            case 1:
-                rectangle.lineStyle(1, 0xFFFFFF, 1);
-                // rectangle.drawRect(screenX, screenY, width, width);
-                rectangle.drawStar(screenX + (width/2), screenY + (width/2), 3, width/2);
-                break;
-            default:
-                rectangle.lineStyle(1, 0xFFFFFF, 1);
-                rectangle.drawRect(screenX, screenY, width, width);
-                break;
+    const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
+      for (var i = 0; i < this.enemies.length; i++) {
+        let e = this.enemies[i];
+
+        const dist = this.distance(
+          tower.sprite.x,
+          tower.sprite.y,
+          e.sprite.position.x,
+          e.sprite.position.y
+        );
+
+        console.log(
+          // tower.sprite.x,
+          // tower.sprite.y,
+          // e.sprite.position.x,
+          // e.sprite.position.y,
+          dist,
+          this.tileSize
+        );
+
+        if (Math.abs(dist) < this.tileSize * 1.5 && e.health > 0) {
+          e.health--;
+          break;
         }
+      }
+    });
+  }
 
-        this.addChild(rectangle);
-        this.towers.push(rectangle);
+  moveTowards(x, y, tx, ty, distance) {
+    const dx = tx - x;
+    const dy = ty - y;
+    const angle = Math.atan2(dy, dx);
+    const maxDistance = this.distance(x, y, tx, ty);
 
-        const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
+    return {
+      x: Math.min(maxDistance, distance * Math.cos(angle)),
+      y: Math.min(maxDistance, distance * Math.sin(angle)),
+    };
+  }
 
-            this.enemies.forEach(e => {
-                const dist = this.distance(rectangle.x,rectangle.y, e.position.x, e.position.y);
-                if(dist < this.tileSize*2) {
-                    console.log(this.distance(rectangle.x,rectangle.y, e.position.x, e.position.y));
-                }
-                
-            });
-
-        });
-    }
-
-    moveTowards(x, y, tx, ty, distance ) {
-        const dx = tx - x;
-        const dy = ty - y;
-        const angle = Math.atan2(dy, dx);
-
-        const a = x-tx;
-        const b = y-ty;
-        const maxDistance = this.distance(x,y,tx,ty); 
-
-        return {
-            x:  Math.min(maxDistance, distance * Math.cos(angle)),
-            y: Math.min(maxDistance, distance * Math.sin(angle))
-        };
-    }
-
-    distance(x1,y1,x2,y2){
-
-        const a = x1-x2;
-        const b = y1-y2;
-        return Math.sqrt(a*a + b*b)
-    }
+  distance(x1, y1, x2, y2) {
+    const a = x1 - x2;
+    const b = y1 - y2;
+    return Math.sqrt(a * a + b * b);
+  }
 }
