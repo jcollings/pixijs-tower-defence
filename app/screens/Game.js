@@ -24,16 +24,22 @@ export default class Game extends Container {
 
     this.addGrid();
 
-    this.addTower(3, 4);
+    // this.addTower(3, 4);
     this.addTower(1, 3);
-    this.addTower(6, 6);
+    // this.addTower(6, 6);
 
     let timer = 0;
     let maxTime = 40;
+    let enemies = 10;
 
-    // this.spawnEnemy();
+    this.spawnEnemy();
 
-    AnimationStore.subscribe(() => {
+    const cancelStore = AnimationStore.subscribe(() => {
+      if (enemies === 1) {
+        cancelStore();
+        return;
+      }
+
       timer +=
         AnimationStore.getState().tick - AnimationStore.getState().previousTick;
 
@@ -42,6 +48,9 @@ export default class Game extends Container {
         // maxTime -= 0.01;
         // maxTime = Math.max(maxTime, 0.5);
         this.spawnEnemy();
+        if (enemies > -1) {
+          enemies--;
+        }
       }
     });
   }
@@ -118,7 +127,7 @@ export default class Game extends Container {
     // rectangle.drawRect(0, 0, width, width);
     rectangle.endFill();
     rectangle.interactive = true;
-    rectangle.pivot.set(width / 2, width / 2);
+    // rectangle.pivot.set(0.5, width / 2);
     rectangle.x = x * this.tileSize + this.tileSize / 2;
     rectangle.y = y * this.tileSize + this.tileSize / 2;
 
@@ -126,13 +135,15 @@ export default class Game extends Container {
     //   console.log("clicked", x, y, this.grid.index(x, y));
     // });
 
-    const enemy = {
+    let enemy = {
       sprite: rectangle,
       health: 8,
+      speed: speed,
+      targets: targets,
     };
 
     this.enemies.push(enemy);
-    this.addChild(rectangle);
+    this.addChild(enemy.sprite);
 
     const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
       const tick = AnimationStore.getState();
@@ -140,43 +151,43 @@ export default class Game extends Container {
       if (enemy.health <= 0 || targets.length <= 0) {
         console.log("remove", enemy.health);
         this.enemies.splice(this.enemies.indexOf(enemy), 1);
-        rectangle.destroy();
+        enemy.sprite.destroy();
         cancelAnimationStoreSubscription();
         return;
       }
 
-      if (enemy.health < 50) {
-        rectangle.clear();
-        rectangle.beginFill(0xff0000);
-        rectangle.drawRect(0, 0, width, width);
-        rectangle.endFill();
-      } else if (enemy.health < 100) {
-        rectangle.clear();
-        rectangle.beginFill(0x00ff00);
-        rectangle.drawRect(0, 0, width, width);
-        rectangle.endFill();
-      } else if (enemy.health < 150) {
-        rectangle.clear();
-        rectangle.beginFill(0x0000ff);
-        rectangle.drawRect(0, 0, width, width);
-        rectangle.endFill();
+      if (enemy.health < 2) {
+        enemy.sprite.clear();
+        enemy.sprite.beginFill(0xff0000);
+        enemy.sprite.drawRect(-width * 0.5, -width * 0.5, width, width);
+        enemy.sprite.endFill();
+      } else if (enemy.health < 5) {
+        enemy.sprite.clear();
+        enemy.sprite.beginFill(0x00ff00);
+        enemy.sprite.drawRect(-width * 0.5, -width * 0.5, width, width);
+        enemy.sprite.endFill();
+      } else if (enemy.health < 8) {
+        enemy.sprite.clear();
+        enemy.sprite.beginFill(0x0000ff);
+        enemy.sprite.drawRect(-width * 0.5, -width * 0.5, width, width);
+        enemy.sprite.endFill();
       }
 
       const targetX = targets[0].x;
       const targetY = targets[0].y;
 
       const move = this.moveTowards(
-        rectangle.x,
-        rectangle.y,
+        enemy.sprite.x,
+        enemy.sprite.y,
         targetX * this.tileSize + this.tileSize / 2,
         targetY * this.tileSize + this.tileSize / 2,
         speed
       );
-      rectangle.position.x += move.x;
-      rectangle.position.y += move.y;
+      enemy.sprite.position.x += move.x;
+      enemy.sprite.position.y += move.y;
 
       if (move.x == 0 && move.y == 0) {
-        targets.shift();
+        enemy.targets.shift();
       }
     });
   }
@@ -218,6 +229,11 @@ export default class Game extends Container {
 
     const tower = {
       sprite: rectangle,
+      distance: 20,
+      delay: 0,
+      maxDelay: 4,
+      range: this.tileSize * 1.5,
+      lineOfSight: this.tileSize * 2,
       isShooting: false,
     };
 
@@ -225,6 +241,11 @@ export default class Game extends Container {
     this.towers.push(tower);
 
     const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
+      if (tower.delay > 0) {
+        tower.delay--;
+        return;
+      }
+
       for (var i = 0; i < this.enemies.length; i++) {
         let e = this.enemies[i];
 
@@ -235,13 +256,14 @@ export default class Game extends Container {
           e.sprite.position.y
         );
 
-        if (
-          tower.isShooting === false &&
-          Math.abs(dist) < this.tileSize * 1.5
-        ) {
-          this.shoot(tower, e);
-          // e.health--;
-          break;
+        if (Math.abs(dist) < tower.lineOfSight) {
+          if (this.shootPredictionBasedOnSetTime(tower, e)) {
+            tower.delay = tower.maxDelay;
+
+            if (tower.delay > 0) {
+              break;
+            }
+          }
         }
       }
     });
@@ -265,7 +287,7 @@ export default class Game extends Container {
     return Math.sqrt(a * a + b * b);
   }
 
-  shoot(tower, enemy) {
+  shootFollow(tower, enemy) {
     // console.log(tower, enemy);
     tower.isShooting = true;
 
@@ -280,40 +302,173 @@ export default class Game extends Container {
     // bullet.pivot.set(width / 2, width / 2);
     bullet.x = tower.sprite.x;
     bullet.y = tower.sprite.y;
-    this.addChild(bullet);
 
-    this.bullets.push(bullet);
+    const bulletData = {
+      sprite: bullet,
+      target: enemy,
+    };
+
+    this.addChild(bulletData.sprite);
+
+    this.bullets.push(bulletData);
 
     const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
       if (enemy.health <= 0) {
-        this.bullets.splice(this.bullets.indexOf(bullet), 1);
-        bullet.destroy();
+        this.bullets.splice(this.bullets.indexOf(bulletData), 1);
+        bulletData.sprite.destroy();
         cancelAnimationStoreSubscription();
         tower.isShooting = false;
         return;
       }
 
       const move = this.moveTowards(
-        bullet.x,
-        bullet.y,
-        enemy.sprite.x,
-        enemy.sprite.y,
+        bulletData.sprite.x,
+        bulletData.sprite.y,
+        bulletData.target.sprite.x,
+        bulletData.target.sprite.y,
         4
       );
-      bullet.position.x += move.x;
-      bullet.position.y += move.y;
+      bulletData.sprite.position.x += move.x;
+      bulletData.sprite.position.y += move.y;
 
       if (
-        bullet.position.x >= enemy.sprite.x - enemy.sprite.width / 2 &&
-        bullet.position.x <= enemy.sprite.x + enemy.sprite.width / 2
+        bulletData.sprite.position.x >=
+          bulletData.target.sprite.x - bulletData.target.sprite.width / 2 &&
+        bulletData.sprite.position.x <=
+          bulletData.target.sprite.x + bulletData.target.sprite.width / 2
       ) {
-        enemy.health--;
-        this.bullets.splice(this.bullets.indexOf(bullet), 1);
-        bullet.destroy();
+        bulletData.target.health--;
+        this.bullets.splice(this.bullets.indexOf(bulletData), 1);
+        bulletData.sprite.destroy();
         cancelAnimationStoreSubscription();
         tower.isShooting = false;
         return;
       }
     });
+  }
+
+  shootPredictionBasedOnSetTime(tower, enemy) {
+    const distance = tower.distance;
+
+    const width = 5;
+
+    let bullet = new Graphics();
+    bullet.beginFill(0xffffff);
+    bullet.drawRect(-width * 0.5, -width * 0.5, width, width);
+    bullet.endFill();
+    bullet.interactive = true;
+    bullet.x = tower.sprite.x;
+    bullet.y = tower.sprite.y;
+
+    const bulletData = {
+      sprite: bullet,
+      target: enemy,
+      targetX: -1,
+      targetY: -1,
+    };
+
+    // 1. calculate where enemy will be in in X ms
+    let found = false;
+    let xd = 0,
+      yd = 0;
+    let oldX = enemy.sprite.x;
+    let oldY = enemy.sprite.y;
+    let distanceTravelled = 0;
+
+    for (let i = 0; i < bulletData.target.targets.length; i++) {
+      const targetX =
+        bulletData.target.targets[i].x * this.tileSize + this.tileSize / 2;
+      const targetY =
+        bulletData.target.targets[i].y * this.tileSize + this.tileSize / 2;
+
+      let virtualMove = this.moveTowards(
+        oldX,
+        oldY,
+        targetX,
+        targetY,
+        distance - distanceTravelled
+      );
+
+      distanceTravelled += Math.max(
+        Math.abs(virtualMove.x),
+        Math.abs(virtualMove.y)
+      );
+
+      oldX += virtualMove.x;
+      oldY += virtualMove.y;
+
+      // console.log(bullet.x, bullet.y, oldX, oldY);
+
+      if (distanceTravelled >= distance) {
+        found = true;
+        break;
+      }
+    }
+
+    // console.log(xd, yd);
+
+    if (false === found) {
+      return false;
+    }
+
+    bulletData.targetX = oldX;
+    bulletData.targetY = oldY;
+
+    // console.log(bulletData);
+
+    this.addChild(bulletData.sprite);
+    this.bullets.push(bulletData);
+
+    // Calculate distance between start and end
+    const shootDistance = this.distance(
+      bulletData.sprite.x,
+      bulletData.sprite.y,
+      bulletData.targetX,
+      bulletData.targetY
+    );
+
+    if (shootDistance < tower.range) {
+      tower.isShooting = true;
+
+      // 2. Shoot at that position
+      const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
+        if (enemy.health <= 0) {
+          this.bullets.splice(this.bullets.indexOf(bulletData), 1);
+          bulletData.sprite.destroy();
+          cancelAnimationStoreSubscription();
+          tower.isShooting = false;
+          return;
+        }
+
+        const move = this.moveTowards(
+          bulletData.sprite.x,
+          bulletData.sprite.y,
+          bulletData.targetX,
+          bulletData.targetY,
+          shootDistance / (distance / enemy.speed)
+        );
+
+        // console.log(distance, shootDistance);
+
+        bulletData.sprite.position.x += move.x;
+        bulletData.sprite.position.y += move.y;
+
+        if (
+          bulletData.sprite.position.x >=
+            bulletData.target.sprite.x - bulletData.target.sprite.width / 2 &&
+          bulletData.sprite.position.x <=
+            bulletData.target.sprite.x + bulletData.target.sprite.width / 2
+        ) {
+          bulletData.target.health--;
+          this.bullets.splice(this.bullets.indexOf(bulletData), 1);
+          bulletData.sprite.destroy();
+          cancelAnimationStoreSubscription();
+          tower.isShooting = false;
+          return;
+        }
+      });
+
+      return true;
+    }
   }
 }
