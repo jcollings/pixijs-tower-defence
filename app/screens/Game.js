@@ -3,6 +3,13 @@ import Store from "../stores/Store";
 import Grid from "../grid/Grid";
 import { AnimationStore } from "../stores/Store";
 
+const Targeting = {
+  DEFAULT: Symbol("default"),
+  LAST: Symbol("last"),
+  STRONGEST: Symbol("strongest"),
+  WEAKEST: Symbol("weakest"),
+};
+
 /**
  * Main Display Object
  *
@@ -24,13 +31,28 @@ export default class Game extends Container {
 
     this.addGrid();
 
-    this.addTower(1, 3);
-    this.addTower(3, 4, 1);
-    this.addTower(6, 6, 2);
+    this.addTower(1, 3, { targeting: Targeting.WEAKEST, type: 0 });
+    this.addTower(3, 3, { targeting: Targeting.DEFAULT, type: 0 });
+    this.addTower(6, 6, { targeting: Targeting.WEAKEST, type: 0 });
+
+    this.addTower(3, 4, { targeting: Targeting.STRONGEST, type: 1 });
+
+    this.addTower(5, 2, { targeting: Targeting.DEFAULT, type: 2 });
+    this.addTower(5, 3, { targeting: Targeting.WEAKEST, type: 2 });
+    this.addTower(6, 2, { targeting: Targeting.LAST, type: 2 });
+    this.addTower(6, 3, { targeting: Targeting.STRONGEST, type: 2 });
 
     let timer = 0;
-    let maxTime = 40;
-    let enemies = 10;
+    let maxTime = 10;
+    let enemies = -1;
+    const path = [
+      { x: 2, y: 0 },
+      { x: 2, y: 5 },
+      { x: 7, y: 5 },
+      { x: 7, y: 9 },
+    ];
+
+    this.drawPath(path);
 
     const cancelStore = AnimationStore.subscribe(() => {
       if (enemies === 1) {
@@ -43,9 +65,12 @@ export default class Game extends Container {
 
       if (timer > maxTime) {
         timer -= maxTime;
-        maxTime -= 0.05;
+        maxTime -= 0.5; //0.05;
         maxTime = Math.max(maxTime, 10);
-        this.spawnEnemy();
+        this.spawnEnemy(path, {
+          level: Math.random() * 10,
+          speed: Math.random() * 3 + 1,
+        });
         if (enemies > -1) {
           enemies--;
         }
@@ -53,13 +78,8 @@ export default class Game extends Container {
     });
   }
 
-  spawnEnemy() {
-    this.addEnemy(0, 0, [
-      { x: 2, y: 0 },
-      { x: 2, y: 5 },
-      { x: 7, y: 5 },
-      { x: 7, y: 9 },
-    ]);
+  spawnEnemy(path, args = {}) {
+    this.addEnemy(path, args);
   }
 
   addGrid() {
@@ -115,13 +135,39 @@ export default class Game extends Container {
     this.addChild(rectangle);
   }
 
-  addEnemy(x, y, targets = []) {
-    const width = 10;
-    const speed = 2;
-    const health = 4;
+  drawPath(path) {
+    for (var i = 1; i < path.length; i++) {
+      let line = new Graphics();
+      // line.position.set(
+      //   path[i - 1].x * this.tileSize + this.tileSize / 2,
+      //   path[i - 1].y * this.tileSize + this.tileSize / 2
+      // );
+      line
+        .lineStyle(1, 0x333355)
+        .moveTo(
+          path[i - 1].x * this.tileSize + this.tileSize / 2,
+          path[i - 1].y * this.tileSize + this.tileSize / 2
+        )
+        .lineTo(
+          path[i].x * this.tileSize + this.tileSize / 2,
+          path[i].y * this.tileSize + this.tileSize / 2
+        );
+
+      this.addChild(line);
+    }
+  }
+
+  addEnemy(path = [], args = {}) {
+    var targets = [...path];
+    const level = args.level ? args.level : 0;
+    const width = 8 + level;
+    const speed = args.speed ? args.speed : 2;
+    const health = 5 + level;
+
+    const { x, y } = targets.shift();
 
     let rectangle = new Graphics();
-    rectangle.beginFill(0xffffff);
+    rectangle.beginFill(0xccccff);
     rectangle.drawRect(-width * 0.5, -width * 0.5, width, width);
     // rectangle.drawRect(0, 0, width, width);
     rectangle.endFill();
@@ -136,6 +182,7 @@ export default class Game extends Container {
 
     let enemy = {
       sprite: rectangle,
+      maxHealth: health,
       health: health,
       speed: speed,
       targets: targets,
@@ -154,17 +201,19 @@ export default class Game extends Container {
         return;
       }
 
-      if (enemy.health < 2) {
+      const healthPercentage = enemy.health / enemy.maxHealth;
+
+      if (healthPercentage < 0.3) {
         enemy.sprite.clear();
         enemy.sprite.beginFill(0xff0000);
         enemy.sprite.drawRect(-width * 0.5, -width * 0.5, width, width);
         enemy.sprite.endFill();
-      } else if (enemy.health < 5) {
+      } else if (healthPercentage < 0.5) {
         enemy.sprite.clear();
         enemy.sprite.beginFill(0x00ff00);
         enemy.sprite.drawRect(-width * 0.5, -width * 0.5, width, width);
         enemy.sprite.endFill();
-      } else if (enemy.health < 8) {
+      } else if (healthPercentage < 1) {
         enemy.sprite.clear();
         enemy.sprite.beginFill(0x0000ff);
         enemy.sprite.drawRect(-width * 0.5, -width * 0.5, width, width);
@@ -190,11 +239,12 @@ export default class Game extends Container {
     });
   }
 
-  addTower(x, y, type = 0) {
+  addTower(x, y, args = {}) {
     const width = 30;
+    const type = args.type ? args.type : 0;
     let range = this.tileSize * 1.5;
     let lineOfSight = this.tileSize * 2;
-    let delay = 20;
+    let delay = 10;
     let damage = 2;
     let distance = 10;
 
@@ -204,19 +254,30 @@ export default class Game extends Container {
     let rectangle = new Graphics();
     switch (type) {
       case 2:
-        rectangle.lineStyle(1, 0xffffff, 1);
+        rectangle.lineStyle(1, 0xccccff);
         rectangle.drawCircle(0, 0, width / 2);
 
         damage = 10;
         delay = 120;
         range = this.tileSize * 5;
         lineOfSight = this.tileSize * 7;
-        distance = 100;
+        distance = 50;
         break;
       case 1:
-        rectangle.lineStyle(1, 0xffffff, 1);
-        // rectangle.drawRect(screenX, screenY, width, width);
-        rectangle.drawStar(0, 0, 3, width / 2);
+        rectangle
+          .lineStyle(1, 0xccccff)
+          .moveTo(0, -width / 2)
+          .lineTo(-width / 2, width / 2);
+
+        rectangle
+          .lineStyle(1, 0xccccff)
+          .moveTo(0, -width / 2)
+          .lineTo(width / 2, width / 2);
+
+        rectangle
+          .lineStyle(1, 0xccccff)
+          .moveTo(-width / 2, width / 2)
+          .lineTo(width / 2, width / 2);
         delay = 90;
         range = this.tileSize * 3;
         lineOfSight = this.tileSize * 5;
@@ -224,7 +285,7 @@ export default class Game extends Container {
         distance = 20;
         break;
       default:
-        rectangle.lineStyle(1, 0xffffff, 1);
+        rectangle.lineStyle(1, 0xaaaaff);
         rectangle.drawRect(-width * 0.5, -width * 0.5, width, width);
         break;
     }
@@ -242,6 +303,7 @@ export default class Game extends Container {
       isShooting: false,
       damage: damage,
       type: type,
+      targeting: args.targeting ? args.targeting : Targeting.DEFAULT,
     };
 
     this.addChild(rectangle);
@@ -253,8 +315,26 @@ export default class Game extends Container {
         return;
       }
 
-      for (var i = 0; i < this.enemies.length; i++) {
-        const e = this.enemies[i];
+      const enemyList = [...this.enemies];
+
+      switch (tower.targeting) {
+        case Targeting.LAST:
+          enemyList.reverse();
+          break;
+        case Targeting.STRONGEST:
+          enemyList.sort((a, b) => {
+            return b.maxHealth - a.maxHealth;
+          });
+          break;
+        case Targeting.WEAKEST:
+          enemyList.sort((a, b) => {
+            return a.maxHealth - b.maxHealth;
+          });
+          break;
+      }
+
+      for (var i = 0; i < enemyList.length; i++) {
+        const e = enemyList[i];
 
         const dist = this.distance(
           tower.sprite.x,
@@ -301,7 +381,7 @@ export default class Game extends Container {
     const width = 5;
 
     let bullet = new Graphics();
-    bullet.beginFill(0xffffff);
+    bullet.beginFill(0xccccff);
     bullet.drawRect(-width * 0.5, -width * 0.5, width, width);
     // bullet.drawRect(0, 0, width, width);
     bullet.endFill();
@@ -357,7 +437,7 @@ export default class Game extends Container {
   shootPredictionBasedOnSetTime(tower, enemy) {
     const distance = tower.distance;
 
-    const width = 1 * tower.damage;
+    const width = Math.max(8, 1 * tower.damage);
 
     const bulletData = {
       sprite: null,
@@ -420,14 +500,27 @@ export default class Game extends Container {
 
     if (shootDistance < tower.range) {
       let bullet = new Graphics();
-      bullet.beginFill(0xffffff);
+      bullet.beginFill(0xccccff);
       switch (tower.type) {
         case 2:
           bullet.drawCircle(0, 0, width / 2);
 
           break;
         case 1:
-          bullet.drawStar(0, 0, 3, width / 2);
+          bullet
+            .lineStyle(1, 0xccccff)
+            .moveTo(0, -width / 2)
+            .lineTo(-width / 2, width / 2);
+
+          bullet
+            .lineStyle(1, 0xccccff)
+            .moveTo(0, -width / 2)
+            .lineTo(width / 2, width / 2);
+
+          bullet
+            .lineStyle(1, 0xccccff)
+            .moveTo(-width / 2, width / 2)
+            .lineTo(width / 2, width / 2);
           break;
         default:
           bullet.drawRect(-width * 0.5, -width * 0.5, width, width);
@@ -476,6 +569,44 @@ export default class Game extends Container {
 
         if (move.x == 0 || move.y == 0) {
           if (tower.type == 2) {
+            const splashRadius = (this.tileSize * 2.5) / 2;
+
+            let splash = new Graphics();
+            let splashData = {
+              max: 5,
+              counter: 5,
+              x: bulletData.sprite.position.x,
+              y: bulletData.sprite.position.y,
+              radius: splashRadius,
+            };
+            this.addChild(splash);
+
+            const cancelSplashAnimationStoreSubscription = AnimationStore.subscribe(
+              () => {
+                if (splashData.counter > 0) {
+                  splashData.counter--;
+
+                  splash.clear();
+                  splash.beginFill(
+                    0xeeeeff,
+                    0.5 //Math.min(0.5, splashData.counter / splashData.max)
+                  );
+                  splash.drawCircle(
+                    splashData.x,
+                    splashData.y,
+                    splashData.radius *
+                      (1 - splashData.counter / splashData.max)
+                  );
+                  splash.endFill();
+                  return;
+                }
+
+                splash.clear();
+                splash.destroy();
+                cancelSplashAnimationStoreSubscription();
+              }
+            );
+
             // splash radius
             for (
               let enemyIndex = 0;
@@ -488,12 +619,14 @@ export default class Game extends Container {
                   this.enemies[enemyIndex].sprite.y,
                   bulletData.sprite.position.x,
                   bulletData.sprite.position.y,
-                  this.tileSize * 2
+                  splashRadius
                 )
               ) {
                 this.enemies[enemyIndex].health -= tower.damage;
               }
             }
+          } else {
+            bulletData.target.health -= tower.damage;
           }
 
           // bulletData.target.health -= tower.damage;
