@@ -24,15 +24,13 @@ export default class Game extends Container {
 
     this.addGrid();
 
-    // this.addTower(3, 4);
     this.addTower(1, 3);
-    // this.addTower(6, 6);
+    this.addTower(3, 4, 1);
+    this.addTower(6, 6, 2);
 
     let timer = 0;
     let maxTime = 40;
-    let enemies = 10;
-
-    this.spawnEnemy();
+    let enemies = -1;
 
     const cancelStore = AnimationStore.subscribe(() => {
       if (enemies === 1) {
@@ -45,8 +43,8 @@ export default class Game extends Container {
 
       if (timer > maxTime) {
         timer -= maxTime;
-        // maxTime -= 0.01;
-        // maxTime = Math.max(maxTime, 0.5);
+        maxTime -= 0.05;
+        maxTime = Math.max(maxTime, 10);
         this.spawnEnemy();
         if (enemies > -1) {
           enemies--;
@@ -120,6 +118,7 @@ export default class Game extends Container {
   addEnemy(x, y, targets = []) {
     const width = 10;
     const speed = 2;
+    const health = 4;
 
     let rectangle = new Graphics();
     rectangle.beginFill(0xffffff);
@@ -137,7 +136,7 @@ export default class Game extends Container {
 
     let enemy = {
       sprite: rectangle,
-      health: 8,
+      health: health,
       speed: speed,
       targets: targets,
     };
@@ -149,7 +148,6 @@ export default class Game extends Container {
       const tick = AnimationStore.getState();
 
       if (enemy.health <= 0 || targets.length <= 0) {
-        console.log("remove", enemy.health);
         this.enemies.splice(this.enemies.indexOf(enemy), 1);
         enemy.sprite.destroy();
         cancelAnimationStoreSubscription();
@@ -194,6 +192,11 @@ export default class Game extends Container {
 
   addTower(x, y, type = 0) {
     const width = 30;
+    let range = this.tileSize * 1.5;
+    let lineOfSight = this.tileSize * 2;
+    let delay = 20;
+    let damage = 2;
+    let distance = 10;
 
     const screenX = x * this.tileSize + this.tileSize / 2;
     const screenY = y * this.tileSize + this.tileSize / 2;
@@ -202,21 +205,23 @@ export default class Game extends Container {
     switch (type) {
       case 2:
         rectangle.lineStyle(1, 0xffffff, 1);
-        rectangle.drawCircle(
-          screenX + width / 2,
-          screenY + width / 2,
-          width / 2
-        );
+        rectangle.drawCircle(0, 0, width / 2);
+
+        damage = 10;
+        delay = 120;
+        range = this.tileSize * 5;
+        lineOfSight = this.tileSize * 7;
+        distance = 100;
         break;
       case 1:
         rectangle.lineStyle(1, 0xffffff, 1);
         // rectangle.drawRect(screenX, screenY, width, width);
-        rectangle.drawStar(
-          screenX + width / 2,
-          screenY + width / 2,
-          3,
-          width / 2
-        );
+        rectangle.drawStar(0, 0, 3, width / 2);
+        delay = 90;
+        range = this.tileSize * 3;
+        lineOfSight = this.tileSize * 5;
+        damage = 5;
+        distance = 20;
         break;
       default:
         rectangle.lineStyle(1, 0xffffff, 1);
@@ -229,12 +234,14 @@ export default class Game extends Container {
 
     const tower = {
       sprite: rectangle,
-      distance: 20,
+      distance: distance,
       delay: 0,
-      maxDelay: 4,
-      range: this.tileSize * 1.5,
-      lineOfSight: this.tileSize * 2,
+      maxDelay: delay,
+      range: range,
+      lineOfSight: lineOfSight,
       isShooting: false,
+      damage: damage,
+      type: type,
     };
 
     this.addChild(rectangle);
@@ -247,7 +254,7 @@ export default class Game extends Container {
       }
 
       for (var i = 0; i < this.enemies.length; i++) {
-        let e = this.enemies[i];
+        const e = this.enemies[i];
 
         const dist = this.distance(
           tower.sprite.x,
@@ -350,13 +357,28 @@ export default class Game extends Container {
   shootPredictionBasedOnSetTime(tower, enemy) {
     const distance = tower.distance;
 
-    const width = 5;
+    const width = 1 * tower.damage;
 
     let bullet = new Graphics();
+    // bullet.beginFill(0xffffff);
+    // bullet.drawRect(-width * 0.5, -width * 0.5, width, width);
+    // bullet.endFill();
+
     bullet.beginFill(0xffffff);
-    bullet.drawRect(-width * 0.5, -width * 0.5, width, width);
+    switch (tower.type) {
+      case 2:
+        bullet.drawCircle(0, 0, width / 2);
+
+        break;
+      case 1:
+        bullet.drawStar(0, 0, 3, width / 2);
+        break;
+      default:
+        bullet.drawRect(-width * 0.5, -width * 0.5, width, width);
+        break;
+    }
     bullet.endFill();
-    bullet.interactive = true;
+
     bullet.x = tower.sprite.x;
     bullet.y = tower.sprite.y;
 
@@ -365,12 +387,11 @@ export default class Game extends Container {
       target: enemy,
       targetX: -1,
       targetY: -1,
+      distance: -1,
     };
 
     // 1. calculate where enemy will be in in X ms
     let found = false;
-    let xd = 0,
-      yd = 0;
     let oldX = enemy.sprite.x;
     let oldY = enemy.sprite.y;
     let distanceTravelled = 0;
@@ -429,38 +450,61 @@ export default class Game extends Container {
 
     if (shootDistance < tower.range) {
       tower.isShooting = true;
+      bulletData.distance = shootDistance / (distance / enemy.speed);
 
       // 2. Shoot at that position
       const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
-        if (enemy.health <= 0) {
-          this.bullets.splice(this.bullets.indexOf(bulletData), 1);
-          bulletData.sprite.destroy();
-          cancelAnimationStoreSubscription();
-          tower.isShooting = false;
-          return;
-        }
+        // if (enemy.health <= 0) {
+        //   this.bullets.splice(this.bullets.indexOf(bulletData), 1);
+        //   bulletData.sprite.destroy();
+        //   cancelAnimationStoreSubscription();
+        //   tower.isShooting = false;
+        //   return;
+        // }
+
+        const maxDistance = this.distance(
+          bulletData.sprite.x,
+          bulletData.sprite.y,
+          bulletData.targetX,
+          bulletData.targetY
+        );
 
         const move = this.moveTowards(
           bulletData.sprite.x,
           bulletData.sprite.y,
           bulletData.targetX,
           bulletData.targetY,
-          shootDistance / (distance / enemy.speed)
+          Math.min(bulletData.distance, maxDistance)
         );
-
-        // console.log(distance, shootDistance);
 
         bulletData.sprite.position.x += move.x;
         bulletData.sprite.position.y += move.y;
 
-        if (
-          bulletData.sprite.position.x >=
-            bulletData.target.sprite.x - bulletData.target.sprite.width / 2 &&
-          bulletData.sprite.position.x <=
-            bulletData.target.sprite.x + bulletData.target.sprite.width / 2
-        ) {
-          bulletData.target.health--;
+        if (move.x == 0 || move.y == 0) {
+          if (tower.type == 2) {
+            // splash radius
+            for (
+              let enemyIndex = 0;
+              enemyIndex < this.enemies.length;
+              enemyIndex++
+            ) {
+              if (
+                this.isInCicle(
+                  this.enemies[enemyIndex].sprite.x,
+                  this.enemies[enemyIndex].sprite.y,
+                  bulletData.sprite.position.x,
+                  bulletData.sprite.position.y,
+                  this.tileSize * 2
+                )
+              ) {
+                this.enemies[enemyIndex].health -= tower.damage;
+              }
+            }
+          }
+
+          // bulletData.target.health -= tower.damage;
           this.bullets.splice(this.bullets.indexOf(bulletData), 1);
+          bulletData.sprite.clear();
           bulletData.sprite.destroy();
           cancelAnimationStoreSubscription();
           tower.isShooting = false;
@@ -470,5 +514,14 @@ export default class Game extends Container {
 
       return true;
     }
+  }
+
+  isInCicle(a, b, x, y, r) {
+    var dist_points = (a - x) * (a - x) + (b - y) * (b - y);
+    r *= r;
+    if (dist_points < r) {
+      return true;
+    }
+    return false;
   }
 }
