@@ -28,17 +28,18 @@ export default class Game extends Container {
     this.addTower(6, 6);
 
     let timer = 0;
-    let maxTime = 1;
+    let maxTime = 40;
 
     // this.spawnEnemy();
 
     AnimationStore.subscribe(() => {
-      timer += AnimationStore.getState().deltaTime;
+      timer +=
+        AnimationStore.getState().tick - AnimationStore.getState().previousTick;
 
       if (timer > maxTime) {
         timer -= maxTime;
-        maxTime -= 0.01;
-        maxTime = Math.max(maxTime, 0.5);
+        // maxTime -= 0.01;
+        // maxTime = Math.max(maxTime, 0.5);
         this.spawnEnemy();
       }
     });
@@ -108,7 +109,7 @@ export default class Game extends Container {
 
   addEnemy(x, y, targets = []) {
     const width = 10;
-    const speed = 50;
+    const speed = 2;
 
     let rectangle = new Graphics();
     rectangle.beginFill(0xffffff);
@@ -168,7 +169,7 @@ export default class Game extends Container {
         rectangle.y,
         targetX * this.tileSize + this.tileSize / 2,
         targetY * this.tileSize + this.tileSize / 2,
-        speed * tick.deltaTime
+        speed
       );
       rectangle.position.x += move.x;
       rectangle.position.y += move.y;
@@ -230,15 +231,6 @@ export default class Game extends Container {
           tower.sprite.y,
           e.sprite.position.x,
           e.sprite.position.y
-        );
-
-        console.log(
-          // tower.sprite.x,
-          // tower.sprite.y,
-          // e.sprite.position.x,
-          // e.sprite.position.y,
-          dist,
-          this.tileSize
         );
 
         if (Math.abs(dist) < this.tileSize * 1.5 && e.health > 0) {
