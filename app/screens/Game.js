@@ -30,7 +30,7 @@ export default class Game extends Container {
 
     let timer = 0;
     let maxTime = 40;
-    let enemies = -1;
+    let enemies = 10;
 
     const cancelStore = AnimationStore.subscribe(() => {
       if (enemies === 1) {
@@ -359,31 +359,8 @@ export default class Game extends Container {
 
     const width = 1 * tower.damage;
 
-    let bullet = new Graphics();
-    // bullet.beginFill(0xffffff);
-    // bullet.drawRect(-width * 0.5, -width * 0.5, width, width);
-    // bullet.endFill();
-
-    bullet.beginFill(0xffffff);
-    switch (tower.type) {
-      case 2:
-        bullet.drawCircle(0, 0, width / 2);
-
-        break;
-      case 1:
-        bullet.drawStar(0, 0, 3, width / 2);
-        break;
-      default:
-        bullet.drawRect(-width * 0.5, -width * 0.5, width, width);
-        break;
-    }
-    bullet.endFill();
-
-    bullet.x = tower.sprite.x;
-    bullet.y = tower.sprite.y;
-
     const bulletData = {
-      sprite: bullet,
+      sprite: null,
       target: enemy,
       targetX: -1,
       targetY: -1,
@@ -426,8 +403,6 @@ export default class Game extends Container {
       }
     }
 
-    // console.log(xd, yd);
-
     if (false === found) {
       return false;
     }
@@ -435,20 +410,39 @@ export default class Game extends Container {
     bulletData.targetX = oldX;
     bulletData.targetY = oldY;
 
-    // console.log(bulletData);
-
-    this.addChild(bulletData.sprite);
-    this.bullets.push(bulletData);
-
     // Calculate distance between start and end
     const shootDistance = this.distance(
-      bulletData.sprite.x,
-      bulletData.sprite.y,
+      tower.sprite.x,
+      tower.sprite.y,
       bulletData.targetX,
       bulletData.targetY
     );
 
     if (shootDistance < tower.range) {
+      let bullet = new Graphics();
+      bullet.beginFill(0xffffff);
+      switch (tower.type) {
+        case 2:
+          bullet.drawCircle(0, 0, width / 2);
+
+          break;
+        case 1:
+          bullet.drawStar(0, 0, 3, width / 2);
+          break;
+        default:
+          bullet.drawRect(-width * 0.5, -width * 0.5, width, width);
+          break;
+      }
+      bullet.endFill();
+
+      bullet.x = tower.sprite.x;
+      bullet.y = tower.sprite.y;
+
+      bulletData.sprite = bullet;
+
+      this.addChild(bulletData.sprite);
+      this.bullets.push(bulletData);
+
       tower.isShooting = true;
       bulletData.distance = shootDistance / (distance / enemy.speed);
 
