@@ -20,6 +20,7 @@ export default class Game extends Container {
     this.tiles = [];
     this.enemies = [];
     this.towers = [];
+    this.bullets = [];
 
     this.addGrid();
 
@@ -127,7 +128,7 @@ export default class Game extends Container {
 
     const enemy = {
       sprite: rectangle,
-      health: 100,
+      health: 8,
     };
 
     this.enemies.push(enemy);
@@ -217,6 +218,7 @@ export default class Game extends Container {
 
     const tower = {
       sprite: rectangle,
+      isShooting: false,
     };
 
     this.addChild(rectangle);
@@ -233,8 +235,12 @@ export default class Game extends Container {
           e.sprite.position.y
         );
 
-        if (Math.abs(dist) < this.tileSize * 1.5 && e.health > 0) {
-          e.health--;
+        if (
+          tower.isShooting === false &&
+          Math.abs(dist) < this.tileSize * 1.5
+        ) {
+          this.shoot(tower, e);
+          // e.health--;
           break;
         }
       }
@@ -257,5 +263,57 @@ export default class Game extends Container {
     const a = x1 - x2;
     const b = y1 - y2;
     return Math.sqrt(a * a + b * b);
+  }
+
+  shoot(tower, enemy) {
+    // console.log(tower, enemy);
+    tower.isShooting = true;
+
+    const width = 5;
+
+    let bullet = new Graphics();
+    bullet.beginFill(0xffffff);
+    bullet.drawRect(-width * 0.5, -width * 0.5, width, width);
+    // bullet.drawRect(0, 0, width, width);
+    bullet.endFill();
+    bullet.interactive = true;
+    // bullet.pivot.set(width / 2, width / 2);
+    bullet.x = tower.sprite.x;
+    bullet.y = tower.sprite.y;
+    this.addChild(bullet);
+
+    this.bullets.push(bullet);
+
+    const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
+      if (enemy.health <= 0) {
+        this.bullets.splice(this.bullets.indexOf(bullet), 1);
+        bullet.destroy();
+        cancelAnimationStoreSubscription();
+        tower.isShooting = false;
+        return;
+      }
+
+      const move = this.moveTowards(
+        bullet.x,
+        bullet.y,
+        enemy.sprite.x,
+        enemy.sprite.y,
+        4
+      );
+      bullet.position.x += move.x;
+      bullet.position.y += move.y;
+
+      if (
+        bullet.position.x >= enemy.sprite.x - enemy.sprite.width / 2 &&
+        bullet.position.x <= enemy.sprite.x + enemy.sprite.width / 2
+      ) {
+        enemy.health--;
+        this.bullets.splice(this.bullets.indexOf(bullet), 1);
+        bullet.destroy();
+        cancelAnimationStoreSubscription();
+        tower.isShooting = false;
+        return;
+      }
+    });
   }
 }
