@@ -1,6 +1,6 @@
 import { Container, Graphics } from "pixi.js";
 import Store from "../stores/Store";
-import Grid, { gridDistance } from "../grid/Grid";
+import Grid, { gridDistance, gridPosition } from "../grid/Grid";
 import { AnimationStore, GridStore } from "../stores/Store";
 import {
   addEnemy,
@@ -11,6 +11,7 @@ import {
   updateSize,
 } from "../stores/GridStore";
 import Enemy from "../displayobjects/Enemy/Enemy";
+import Bullet from "../displayobjects/Bullet/Bullet";
 
 const Targeting = {
   DEFAULT: Symbol("default"),
@@ -79,9 +80,14 @@ export default class Game extends Container {
       //   tower.update();
       // });
       // Update All Bullets
-      // GridStore.getState().bullets.forEach((bullet) => {
-      //   bullet.update();
-      // });
+      GridStore.getState().bullets.forEach((bullet) => {
+        bullet.update();
+
+        if (bullet.isComplete()) {
+          bullet.destroy();
+          GridStore.dispatch(removeBullet(bullet));
+        }
+      });
 
       // Update All Enemies
       GridStore.getState().enemies.forEach((enemy) => {
@@ -413,33 +419,20 @@ export default class Game extends Container {
   shootPredictionBasedOnSetTime(tower, enemy) {
     const distance = tower.distance;
 
-    const width = Math.max(8, 1 * tower.damage);
-
-    const bulletData = {
-      sprite: null,
-      target: enemy,
-      targetX: -1,
-      targetY: -1,
-      distance: -1,
-    };
-
     // 1. calculate where enemy will be in in X ms
     let found = false;
     let oldX = enemy.position.x;
     let oldY = enemy.position.y;
     let distanceTravelled = 0;
 
-    for (let i = 0; i < bulletData.target.targets.length; i++) {
-      const targetX =
-        bulletData.target.targets[i].x * this.tileSize + this.tileSize / 2;
-      const targetY =
-        bulletData.target.targets[i].y * this.tileSize + this.tileSize / 2;
+    for (let i = 0; i < enemy.targets.length; i++) {
+      const target = gridPosition(enemy.targets[i].x, enemy.targets[i].y);
 
       let virtualMove = this.moveTowards(
         oldX,
         oldY,
-        targetX,
-        targetY,
+        target.x,
+        target.y,
         distance - distanceTravelled
       );
 
@@ -463,159 +456,26 @@ export default class Game extends Container {
       return false;
     }
 
-    bulletData.targetX = oldX;
-    bulletData.targetY = oldY;
-
     // Calculate distance between start and end
     const shootDistance = this.distance(
       tower.sprite.x,
       tower.sprite.y,
-      bulletData.targetX,
-      bulletData.targetY
+      oldX,
+      oldY
     );
 
     if (shootDistance < tower.range) {
-      let bullet = new Graphics();
-      bullet.beginFill(0xccccff);
-      switch (tower.type) {
-        case 2:
-          bullet.drawCircle(0, 0, width / 2);
-
-          break;
-        case 1:
-          bullet
-            .lineStyle(1, 0xccccff)
-            .moveTo(0, -width / 2)
-            .lineTo(-width / 2, width / 2);
-
-          bullet
-            .lineStyle(1, 0xccccff)
-            .moveTo(0, -width / 2)
-            .lineTo(width / 2, width / 2);
-
-          bullet
-            .lineStyle(1, 0xccccff)
-            .moveTo(-width / 2, width / 2)
-            .lineTo(width / 2, width / 2);
-          break;
-        default:
-          bullet.drawRect(-width * 0.5, -width * 0.5, width, width);
-          break;
-      }
-      bullet.endFill();
-
-      bullet.x = tower.sprite.x;
-      bullet.y = tower.sprite.y;
-
-      bulletData.sprite = bullet;
-
-      this.addChild(bulletData.sprite);
-      // this.bullets.push(bulletData);
-      GridStore.dispatch(addBullet(bulletData));
-
-      tower.isShooting = true;
-      bulletData.distance = shootDistance / (distance / enemy.speed);
-
-      // 2. Shoot at that position
-      const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
-        // if (enemy.health <= 0) {
-        //   this.bullets.splice(this.bullets.indexOf(bulletData), 1);
-        //   bulletData.sprite.destroy();
-        //   cancelAnimationStoreSubscription();
-        //   tower.isShooting = false;
-        //   return;
-        // }
-
-        const maxDistance = this.distance(
-          bulletData.sprite.x,
-          bulletData.sprite.y,
-          bulletData.targetX,
-          bulletData.targetY
-        );
-
-        const move = this.moveTowards(
-          bulletData.sprite.x,
-          bulletData.sprite.y,
-          bulletData.targetX,
-          bulletData.targetY,
-          Math.min(bulletData.distance, maxDistance)
-        );
-
-        bulletData.sprite.position.x += move.x;
-        bulletData.sprite.position.y += move.y;
-
-        if (move.x == 0 || move.y == 0) {
-          if (tower.type == 2) {
-            const splashRadius = (this.tileSize * 2.5) / 2;
-
-            let splash = new Graphics();
-            let splashData = {
-              max: 5,
-              counter: 5,
-              x: bulletData.sprite.position.x,
-              y: bulletData.sprite.position.y,
-              radius: splashRadius,
-            };
-            this.addChild(splash);
-
-            const cancelSplashAnimationStoreSubscription = AnimationStore.subscribe(
-              () => {
-                if (splashData.counter > 0) {
-                  splashData.counter--;
-
-                  splash.clear();
-                  splash.beginFill(
-                    0xeeeeff,
-                    0.5 //Math.min(0.5, splashData.counter / splashData.max)
-                  );
-                  splash.drawCircle(
-                    splashData.x,
-                    splashData.y,
-                    splashData.radius *
-                      (1 - splashData.counter / splashData.max)
-                  );
-                  splash.endFill();
-                  return;
-                }
-
-                splash.clear();
-                splash.destroy();
-                cancelSplashAnimationStoreSubscription();
-              }
-            );
-
-            // splash radius
-            const enemies = GridStore.getState().enemies;
-            for (
-              let enemyIndex = 0;
-              enemyIndex < enemies.length;
-              enemyIndex++
-            ) {
-              if (
-                this.isInCicle(
-                  enemies[enemyIndex].position.x,
-                  enemies[enemyIndex].position.y,
-                  bulletData.sprite.position.x,
-                  bulletData.sprite.position.y,
-                  splashRadius
-                )
-              ) {
-                enemies[enemyIndex].health -= tower.damage;
-              }
-            }
-          } else {
-            bulletData.target.health -= tower.damage;
-          }
-
-          // bulletData.target.health -= tower.damage;
-          bulletData.sprite.clear();
-          bulletData.sprite.destroy();
-          GridStore.dispatch(removeBullet(bulletData));
-          cancelAnimationStoreSubscription();
-          tower.isShooting = false;
-          return;
-        }
+      const bullet = new Bullet({
+        type: tower.type,
+        enemy: enemy,
+        damage: tower.damage,
+        distance: shootDistance / (distance / enemy.speed),
+        splashSize: tower.type == 2 ? (this.tileSize * 2.5) / 2 : 0,
       });
+      bullet.setPath(tower.sprite.x, tower.sprite.y, oldX, oldY);
+      this.addChild(bullet);
+      GridStore.dispatch(addBullet(bullet));
+      tower.isShooting = true;
 
       return true;
     }
