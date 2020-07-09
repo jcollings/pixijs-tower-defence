@@ -1,6 +1,6 @@
 import { Container, Graphics } from "pixi.js";
 import Store from "../stores/Store";
-import Grid from "../grid/Grid";
+import Grid, { gridDistance } from "../grid/Grid";
 import { AnimationStore, GridStore } from "../stores/Store";
 import {
   addEnemy,
@@ -8,7 +8,9 @@ import {
   addTower,
   addBullet,
   removeBullet,
+  updateSize,
 } from "../stores/GridStore";
+import Enemy from "../displayobjects/Enemy/Enemy";
 
 const Targeting = {
   DEFAULT: Symbol("default"),
@@ -35,6 +37,7 @@ export default class Game extends Container {
     this.tileY = 10;
 
     this.tiles = [];
+    this.enemies = [];
     // this.towers = [];
     // this.bullets = [];
 
@@ -67,12 +70,29 @@ export default class Game extends Container {
 
     this.drawPath(path);
 
-    // const enemy = new Enemy();
-    // enemy.setup();
-    // enemy.position.set(100, 100);
-    // this.addChild(enemy);
+    AnimationStore.subscribe(() => {
+      // Update All Towers
+      // this.enemies.forEach((enemy) => {
+      //   enemy.update();
+      // });
+      // GridStore.getState().towers.forEach((tower) => {
+      //   tower.update();
+      // });
+      // Update All Bullets
+      // GridStore.getState().bullets.forEach((bullet) => {
+      //   bullet.update();
+      // });
 
-    // GridStore.dispatch(updateSize(20, 20));
+      // Update All Enemies
+      GridStore.getState().enemies.forEach((enemy) => {
+        enemy.update();
+
+        if (enemy.health <= 0 || enemy.targets.length <= 0) {
+          enemy.destroy();
+          GridStore.dispatch(removeEnemy(enemy));
+        }
+      });
+    });
 
     const cancelStore = AnimationStore.subscribe(() => {
       if (enemies === 1) {
@@ -104,6 +124,8 @@ export default class Game extends Container {
   }
 
   addGrid() {
+    GridStore.dispatch(updateSize(10, 10, 50));
+
     this.grid = new Grid(this.tileX, this.tileY);
 
     for (let i = 0; i < this.grid.size(); i++) {
@@ -180,89 +202,12 @@ export default class Game extends Container {
 
   addEnemy(path = [], args = {}) {
     this.enemiesTotal++;
-    var targets = [...path];
-    const level = args.level ? args.level : 0;
-    const width = 8 + level;
-    const speed = args.speed ? args.speed : 2;
-    const health = 5 + level;
 
-    const { x, y } = targets.shift();
+    const enemy = new Enemy(args);
+    this.addChild(enemy);
 
-    let rectangle = new Graphics();
-    rectangle.beginFill(0xccccff);
-    rectangle.drawRect(-width * 0.5, -width * 0.5, width, width);
-    // rectangle.drawRect(0, 0, width, width);
-    rectangle.endFill();
-    rectangle.interactive = true;
-    // rectangle.pivot.set(0.5, width / 2);
-    rectangle.x = x * this.tileSize + this.tileSize / 2;
-    rectangle.y = y * this.tileSize + this.tileSize / 2;
-
-    // rectangle.on("mousedown", (e) => {
-    //   console.log("clicked", x, y, this.grid.index(x, y));
-    // });
-
-    let enemy = {
-      sprite: rectangle,
-      maxHealth: health,
-      health: health,
-      speed: speed,
-      targets: targets,
-    };
-
+    enemy.setPath([...path]);
     GridStore.dispatch(addEnemy(enemy));
-    this.addChild(enemy.sprite);
-
-    const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
-      const tick = AnimationStore.getState();
-
-      if (enemy.health <= 0 || targets.length <= 0) {
-        if (enemy.health <= 0) {
-          this.enemiesKilled++;
-        }
-        enemy.sprite.destroy();
-        GridStore.dispatch(removeEnemy(enemy));
-        // this.enemies.splice(this.enemies.indexOf(enemy), 1);
-        cancelAnimationStoreSubscription();
-        return;
-      }
-
-      const healthPercentage = enemy.health / enemy.maxHealth;
-
-      if (healthPercentage < 0.3) {
-        enemy.sprite.clear();
-        enemy.sprite.beginFill(0xff0000);
-        enemy.sprite.drawRect(-width * 0.5, -width * 0.5, width, width);
-        enemy.sprite.endFill();
-      } else if (healthPercentage < 0.5) {
-        enemy.sprite.clear();
-        enemy.sprite.beginFill(0x00ff00);
-        enemy.sprite.drawRect(-width * 0.5, -width * 0.5, width, width);
-        enemy.sprite.endFill();
-      } else if (healthPercentage < 1) {
-        enemy.sprite.clear();
-        enemy.sprite.beginFill(0x0000ff);
-        enemy.sprite.drawRect(-width * 0.5, -width * 0.5, width, width);
-        enemy.sprite.endFill();
-      }
-
-      const targetX = targets[0].x;
-      const targetY = targets[0].y;
-
-      const move = this.moveTowards(
-        enemy.sprite.x,
-        enemy.sprite.y,
-        targetX * this.tileSize + this.tileSize / 2,
-        targetY * this.tileSize + this.tileSize / 2,
-        speed
-      );
-      enemy.sprite.position.x += move.x;
-      enemy.sprite.position.y += move.y;
-
-      if (move.x == 0 && move.y == 0) {
-        enemy.targets.shift();
-      }
-    });
   }
 
   addTower(x, y, args = {}) {
@@ -360,18 +305,19 @@ export default class Game extends Container {
           break;
       }
 
-      for (var i = 0; i < enemyList.length; i++) {
-        const e = enemyList[i];
+      // TODO: Switch to new enemy format
 
-        const dist = this.distance(
+      const enemies = GridStore.getState().enemies;
+      for (var i = 0; i < enemies.length; i++) {
+        const enemy = enemies[i];
+        const dist = gridDistance(
           tower.sprite.x,
           tower.sprite.y,
-          e.sprite.position.x,
-          e.sprite.position.y
+          enemy.position.x,
+          enemy.position.y
         );
-
         if (Math.abs(dist) < tower.lineOfSight) {
-          if (this.shootPredictionBasedOnSetTime(tower, e)) {
+          if (this.shootPredictionBasedOnSetTime(tower, enemy)) {
             tower.delay = tower.maxDelay;
 
             if (tower.delay > 0) {
@@ -479,8 +425,8 @@ export default class Game extends Container {
 
     // 1. calculate where enemy will be in in X ms
     let found = false;
-    let oldX = enemy.sprite.x;
-    let oldY = enemy.sprite.y;
+    let oldX = enemy.position.x;
+    let oldY = enemy.position.y;
     let distanceTravelled = 0;
 
     for (let i = 0; i < bulletData.target.targets.length; i++) {
@@ -647,8 +593,8 @@ export default class Game extends Container {
             ) {
               if (
                 this.isInCicle(
-                  enemies[enemyIndex].sprite.x,
-                  enemies[enemyIndex].sprite.y,
+                  enemies[enemyIndex].position.x,
+                  enemies[enemyIndex].position.y,
                   bulletData.sprite.position.x,
                   bulletData.sprite.position.y,
                   splashRadius

@@ -10,6 +10,7 @@ export default (
   state = {
     width: 10,
     height: 10,
+    tileSize: 50,
     tiles: [],
     enemies: [],
     towers: [],
@@ -23,6 +24,7 @@ export default (
         ...state,
         width: action.width,
         height: action.height,
+        tileSize: action.tileSize,
       };
     case ADD_ENEMY:
       return {
@@ -75,10 +77,11 @@ export default (
   }
 };
 
-export const updateSize = (width, height) => ({
+export const updateSize = (width, height, tileSize) => ({
   type: GRID_SIZE,
   width,
   height,
+  tileSize,
 });
 
 export const addEnemy = (enemy) => ({

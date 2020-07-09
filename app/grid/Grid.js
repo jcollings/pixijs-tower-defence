@@ -6,8 +6,6 @@ export default class Grid {
     this._width = width;
     this._height = height;
     this._tileSize = tileSize;
-
-    GridStore.dispatch(updateSize(this._width, this._height));
   }
 
   width() {
@@ -56,3 +54,41 @@ export default class Grid {
     };
   }
 }
+
+export const gridWidth = () => {
+  return GridStore.getState().width;
+};
+
+export const gridHeight = () => {
+  return GridStore.getState().height;
+};
+
+export const gridTileSize = () => {
+  return GridStore.getState().tileSize;
+};
+
+export const gridPosition = (x, y) => {
+  const tileSize = gridTileSize();
+  return {
+    x: x * tileSize + tileSize / 2,
+    y: y * tileSize + tileSize / 2,
+  };
+};
+
+export const gridMoveTowards = (x, y, tx, ty, distance) => {
+  const dx = tx - x;
+  const dy = ty - y;
+  const angle = Math.atan2(dy, dx);
+  const maxDistance = gridDistance(x, y, tx, ty);
+
+  return {
+    x: Math.min(maxDistance, distance * Math.cos(angle)),
+    y: Math.min(maxDistance, distance * Math.sin(angle)),
+  };
+};
+
+export const gridDistance = (x1, y1, x2, y2) => {
+  const a = x1 - x2;
+  const b = y1 - y2;
+  return Math.sqrt(a * a + b * b);
+};
