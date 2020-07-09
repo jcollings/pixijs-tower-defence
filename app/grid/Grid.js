@@ -1,47 +1,58 @@
+import { GridStore } from "../stores/Store";
+import { updateSize } from "../stores/GridStore";
+
 export default class Grid {
+  constructor(width, height, tileSize) {
+    this._width = width;
+    this._height = height;
+    this._tileSize = tileSize;
 
-    constructor(width, height) {
-        this._width = width;
-        this._height = height;
+    GridStore.dispatch(updateSize(this._width, this._height));
+  }
+
+  width() {
+    return this._width;
+  }
+
+  height() {
+    return this._height;
+  }
+
+  size() {
+    return this.width() * this.height();
+  }
+
+  index(x, y) {
+    const width = this.width();
+    const height = this.height();
+    const index = x + width * y;
+    if (this.inGrid(index) && x >= 0 && y >= 0 && x < width && y < height) {
+      return index;
+    }
+    return -1;
+  }
+
+  coord(index) {
+    const width = this.width();
+    const height = this.height();
+    return {
+      x: index % width,
+      y: Math.floor((index / width) % height),
+    };
+  }
+
+  inGrid(index) {
+    if (index < 0 || index >= this._width * this._height) {
+      return false;
     }
 
-    width() {
-        return this._width;
-    }
+    return true;
+  }
 
-    height() {
-        return this._height;
-    }
-
-    size(){
-        return this.width() * this.height();
-    }
-
-    index(x, y) {
-        const width = this.width();
-        const height = this.height();
-        const index = x + width * y;
-        if (this.inGrid(index) && x >= 0 && y >= 0 && x < width && y < height) {
-            return index;
-        }
-        return -1;
-    }
-
-    coord(index){
-        const width = this.width();
-        const height = this.height();
-        return {
-            x: index % width,
-            y: Math.floor((index / width) % height)
-        }
-    }
-
-    inGrid(index) {
-        if (index < 0 || index >= this._width * this._height) {
-            return false;
-        }
-
-        return true;
-    }
-
+  position(x, y) {
+    return {
+      x: x * this._tileSize + this._tileSize / 2,
+      y: y * this._tileSize + this._tileSize / 2,
+    };
+  }
 }

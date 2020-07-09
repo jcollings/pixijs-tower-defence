@@ -1,7 +1,14 @@
 import { Container, Graphics } from "pixi.js";
 import Store from "../stores/Store";
 import Grid from "../grid/Grid";
-import { AnimationStore } from "../stores/Store";
+import { AnimationStore, GridStore } from "../stores/Store";
+import {
+  addEnemy,
+  removeEnemy,
+  addTower,
+  addBullet,
+  removeBullet,
+} from "../stores/GridStore";
 
 const Targeting = {
   DEFAULT: Symbol("default"),
@@ -20,14 +27,20 @@ export default class Game extends Container {
   constructor(...args) {
     super(args);
 
+    this.enemiesKilled = 0;
+    this.enemiesTotal = 0;
+
     this.tileSize = 50;
     this.tileX = 10;
     this.tileY = 10;
 
     this.tiles = [];
-    this.enemies = [];
-    this.towers = [];
-    this.bullets = [];
+    // this.towers = [];
+    // this.bullets = [];
+
+    // GridStore.subscribe(() => {
+    //   console.log(GridStore.getState());
+    // });
 
     this.addGrid();
 
@@ -53,6 +66,13 @@ export default class Game extends Container {
     ];
 
     this.drawPath(path);
+
+    // const enemy = new Enemy();
+    // enemy.setup();
+    // enemy.position.set(100, 100);
+    // this.addChild(enemy);
+
+    // GridStore.dispatch(updateSize(20, 20));
 
     const cancelStore = AnimationStore.subscribe(() => {
       if (enemies === 1) {
@@ -80,6 +100,7 @@ export default class Game extends Container {
 
   spawnEnemy(path, args = {}) {
     this.addEnemy(path, args);
+    console.log("Score: " + this.enemiesKilled + "/" + this.enemiesTotal);
   }
 
   addGrid() {
@@ -158,6 +179,7 @@ export default class Game extends Container {
   }
 
   addEnemy(path = [], args = {}) {
+    this.enemiesTotal++;
     var targets = [...path];
     const level = args.level ? args.level : 0;
     const width = 8 + level;
@@ -188,15 +210,19 @@ export default class Game extends Container {
       targets: targets,
     };
 
-    this.enemies.push(enemy);
+    GridStore.dispatch(addEnemy(enemy));
     this.addChild(enemy.sprite);
 
     const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
       const tick = AnimationStore.getState();
 
       if (enemy.health <= 0 || targets.length <= 0) {
-        this.enemies.splice(this.enemies.indexOf(enemy), 1);
+        if (enemy.health <= 0) {
+          this.enemiesKilled++;
+        }
         enemy.sprite.destroy();
+        GridStore.dispatch(removeEnemy(enemy));
+        // this.enemies.splice(this.enemies.indexOf(enemy), 1);
         cancelAnimationStoreSubscription();
         return;
       }
@@ -307,7 +333,8 @@ export default class Game extends Container {
     };
 
     this.addChild(rectangle);
-    this.towers.push(tower);
+    GridStore.dispatch(addTower(tower));
+    // this.towers.push(tower);
 
     const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
       if (tower.delay > 0) {
@@ -315,7 +342,7 @@ export default class Game extends Container {
         return;
       }
 
-      const enemyList = [...this.enemies];
+      const enemyList = GridStore.getState().enemies;
 
       switch (tower.targeting) {
         case Targeting.LAST:
@@ -397,12 +424,15 @@ export default class Game extends Container {
 
     this.addChild(bulletData.sprite);
 
-    this.bullets.push(bulletData);
+    GridStore.dispatch(addBullet(bulletData));
+    // this.bullets.push(bulletData);
 
     const cancelAnimationStoreSubscription = AnimationStore.subscribe(() => {
+      // const bullets = GridStore.getState().bullets;
+
       if (enemy.health <= 0) {
-        this.bullets.splice(this.bullets.indexOf(bulletData), 1);
         bulletData.sprite.destroy();
+        GridStore.dispatch(removeBullet(bulletData));
         cancelAnimationStoreSubscription();
         tower.isShooting = false;
         return;
@@ -425,8 +455,8 @@ export default class Game extends Container {
           bulletData.target.sprite.x + bulletData.target.sprite.width / 2
       ) {
         bulletData.target.health--;
-        this.bullets.splice(this.bullets.indexOf(bulletData), 1);
         bulletData.sprite.destroy();
+        GridStore.dispatch(removeBullet(bulletData));
         cancelAnimationStoreSubscription();
         tower.isShooting = false;
         return;
@@ -534,7 +564,8 @@ export default class Game extends Container {
       bulletData.sprite = bullet;
 
       this.addChild(bulletData.sprite);
-      this.bullets.push(bulletData);
+      // this.bullets.push(bulletData);
+      GridStore.dispatch(addBullet(bulletData));
 
       tower.isShooting = true;
       bulletData.distance = shootDistance / (distance / enemy.speed);
@@ -608,21 +639,22 @@ export default class Game extends Container {
             );
 
             // splash radius
+            const enemies = GridStore.getState().enemies;
             for (
               let enemyIndex = 0;
-              enemyIndex < this.enemies.length;
+              enemyIndex < enemies.length;
               enemyIndex++
             ) {
               if (
                 this.isInCicle(
-                  this.enemies[enemyIndex].sprite.x,
-                  this.enemies[enemyIndex].sprite.y,
+                  enemies[enemyIndex].sprite.x,
+                  enemies[enemyIndex].sprite.y,
                   bulletData.sprite.position.x,
                   bulletData.sprite.position.y,
                   splashRadius
                 )
               ) {
-                this.enemies[enemyIndex].health -= tower.damage;
+                enemies[enemyIndex].health -= tower.damage;
               }
             }
           } else {
@@ -630,9 +662,9 @@ export default class Game extends Container {
           }
 
           // bulletData.target.health -= tower.damage;
-          this.bullets.splice(this.bullets.indexOf(bulletData), 1);
           bulletData.sprite.clear();
           bulletData.sprite.destroy();
+          GridStore.dispatch(removeBullet(bulletData));
           cancelAnimationStoreSubscription();
           tower.isShooting = false;
           return;

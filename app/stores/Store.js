@@ -1,13 +1,15 @@
-import { createStore, combineReducers } from 'redux';
-import Animation from './AnimationStore';
-import Renderer from './RendererStore';
-import App from './AppStore';
+import { createStore, combineReducers } from "redux";
+import Animation from "./AnimationStore";
+import Grid from "./GridStore";
+import Renderer from "./RendererStore";
+import App from "./AppStore";
 
 const Combi = combineReducers({
   Renderer,
-  App
+  App,
 });
 
 export const AnimationStore = createStore(Animation);
+export const GridStore = createStore(Grid);
 
 export default createStore(Combi);
