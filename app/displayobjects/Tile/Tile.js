@@ -3,7 +3,7 @@ import { gridTileSize, gridIndex } from "../../grid/Grid";
 import Tower from "../Tower/Tower";
 import { Targeting } from "../../constants/AppConstants";
 import { GridStore } from "../../stores/Store";
-import { addTower } from "../../stores/GridStore";
+import { addTower, addEnergy } from "../../stores/GridStore";
 
 export default class Tile extends Graphics {
   constructor(x, y, args = {}) {
@@ -25,13 +25,19 @@ export default class Tile extends Graphics {
       GridStore.getState().selection;
 
       let tower = null;
-      const { selection } = GridStore.getState();
+      const { selection, energy } = GridStore.getState();
       if (selection > 0) {
         tower = new Tower(x, y, {
           targeting: Targeting.DEFAULT,
           type: selection - 1,
         });
-        this.parent.addChild(tower);
+        const cost = tower.getCost();
+        if (cost <= energy) {
+          this.parent.addChild(tower);
+          GridStore.dispatch(addEnergy(-cost));
+        } else {
+          tower = null;
+        }
       }
 
       GridStore.dispatch(addTower(gridIndex(x, y), tower));

@@ -55,7 +55,7 @@ export default class Game extends Container {
     // this.addTower(6, 3, { targeting: Targeting.STRONGEST, type: 2 });
 
     let timer = 0;
-    let maxTime = 40;
+    let maxTime = 80;
     let enemies = -1;
     const path = [
       { x: 2, y: 0 },

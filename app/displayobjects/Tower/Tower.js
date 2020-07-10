@@ -23,6 +23,7 @@ export default class Tower extends Graphics {
     this.distance = 10;
     this.delay = 0;
     this.splashSize = 0;
+    this.cost = 100;
 
     const screenPos = gridPosition(x, y);
     const colour = 0xaaaaff;
@@ -38,6 +39,7 @@ export default class Tower extends Graphics {
         this.lineOfSight = tileSize * 7;
         this.distance = 50;
         this.splashSize = (tileSize * 1.5) / 2;
+        this.cost = 200;
         break;
       case 1:
         this.lineStyle(1, colour)
@@ -51,6 +53,7 @@ export default class Tower extends Graphics {
         this.damage = 5;
         this.distance = 20;
         this.splashSize = (tileSize * 0.4) / 2;
+        this.cost = 150;
         break;
       default:
         this.lineStyle(1, colour);
@@ -58,6 +61,10 @@ export default class Tower extends Graphics {
         break;
     }
     this.position.set(screenPos.x, screenPos.y);
+  }
+
+  getCost() {
+    return this.cost;
   }
 
   update() {

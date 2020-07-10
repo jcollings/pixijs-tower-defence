@@ -20,7 +20,7 @@ export default (
     enemies: [],
     towers: new Array(10 * 10).fill(null),
     bullets: [],
-    energy: 0,
+    energy: 200,
     wave: 0,
   },
   action = {}
