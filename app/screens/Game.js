@@ -60,7 +60,7 @@ export default class Game extends Container {
     this.addTower(6, 3, { targeting: Targeting.STRONGEST, type: 2 });
 
     let timer = 0;
-    let maxTime = 10;
+    let maxTime = 5;
     let enemies = -1;
     const path = [
       { x: 2, y: 0 },
@@ -110,7 +110,7 @@ export default class Game extends Container {
       if (timer > maxTime) {
         timer -= maxTime;
         maxTime -= 0.5; //0.05;
-        maxTime = Math.max(maxTime, 10);
+        maxTime = Math.max(maxTime, 5);
         this.spawnEnemy(path, {
           level: Math.random() * 10,
           speed: Math.random() * 3 + 1,

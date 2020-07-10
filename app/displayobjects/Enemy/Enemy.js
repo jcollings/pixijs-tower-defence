@@ -38,7 +38,7 @@ export default class Enemy extends Graphics {
     if (healthPercentage < 0.3) {
       this.drawEnemy(0xff0000);
     } else if (healthPercentage < 0.5) {
-      this.drawEnemy(0x00ff00);
+      this.drawEnemy(0xffff00);
     } else if (healthPercentage < 1) {
       this.drawEnemy(0x0000ff);
     }

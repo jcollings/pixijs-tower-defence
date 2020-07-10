@@ -101,3 +101,52 @@ export const isInCicle = (a, b, x, y, r) => {
   }
   return false;
 };
+
+/**
+ * Predict where enemy will be in x amount of ticks
+ *
+ * @param {Enemy} enemy
+ * @param {int} ticks
+ */
+export const predictEnemyPosition = (enemy, distance) => {
+  let found = false;
+  let oldX = enemy.position.x;
+  let oldY = enemy.position.y;
+  let distanceTravelled = 0;
+
+  for (let i = 0; i < enemy.targets.length; i++) {
+    const target = gridPosition(enemy.targets[i].x, enemy.targets[i].y);
+
+    let virtualMove = gridMoveTowards(
+      oldX,
+      oldY,
+      target.x,
+      target.y,
+      distance - distanceTravelled
+    );
+
+    distanceTravelled += Math.max(
+      Math.abs(virtualMove.x),
+      Math.abs(virtualMove.y)
+    );
+
+    oldX += virtualMove.x;
+    oldY += virtualMove.y;
+
+    // console.log(bullet.x, bullet.y, oldX, oldY);
+
+    if (distanceTravelled >= distance) {
+      found = true;
+      break;
+    }
+  }
+
+  if (false === found) {
+    return false;
+  }
+
+  return {
+    x: oldX,
+    y: oldY,
+  };
+};

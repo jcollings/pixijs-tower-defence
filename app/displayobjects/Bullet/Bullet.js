@@ -19,6 +19,9 @@ export default class Bullet extends Graphics {
     this.splashSize = args.splashSize ? args.splashSize : 0;
     this.complete = false;
     this.splashing = false;
+
+    // store predicted enemy list cache on each update
+    this.enemies = null;
   }
 
   drawBullet() {
@@ -49,6 +52,9 @@ export default class Bullet extends Graphics {
   }
 
   update() {
+    // clear predicted enemy cache
+    this.enemies = null;
+
     if (this.isComplete()) {
       return;
     }
@@ -115,20 +121,12 @@ export default class Bullet extends Graphics {
         );
 
         // splash radius
-        const enemies = GridStore.getState().enemies;
-        for (let enemyIndex = 0; enemyIndex < enemies.length; enemyIndex++) {
-          if (
-            isInCicle(
-              enemies[enemyIndex].position.x,
-              enemies[enemyIndex].position.y,
-              splashData.x,
-              splashData.y,
-              splashRadius
-            )
-          ) {
-            enemies[enemyIndex].health -= this.damage;
-          }
-        }
+        let enemies = this.getEnemiesInSplashRadius(
+          splashData.x,
+          splashData.y,
+          splashRadius
+        );
+        enemies.forEach((enemy) => (enemy.health -= this.damage));
       } else {
         this.enemy.health -= this.damage;
       }
@@ -138,5 +136,33 @@ export default class Bullet extends Graphics {
     }
 
     return false;
+  }
+
+  /**
+   * Get list of enemies calculated to be in enemy splash radius
+   *
+   * @param {number} x X Position
+   * @param {number} y Y Position
+   * @param {number} r Splash radius
+   *
+   * @return {Enemy[]} List of Enemy
+   */
+  getEnemiesInSplashRadius(x, y, r) {
+    if (this.enemies !== null) {
+      return this.enemies;
+    }
+
+    if (r <= 0) {
+      return (this.enemies = []);
+    }
+
+    const enemies = GridStore.getState().enemies;
+    return (this.enemies = enemies.filter((enemy) =>
+      isInCicle(enemy.position.x, enemy.position.y, x, y, r)
+    ));
+  }
+
+  isEnemyInSplashRadius(x, y, r, enemy) {
+    return this.getEnemiesInSplashRadius(x, y, r).indexOf(enemy) !== -1;
   }
 }

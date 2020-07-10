@@ -3,7 +3,7 @@ import {
   gridPosition,
   gridTileSize,
   gridDistance,
-  gridMoveTowards,
+  predictEnemyPosition,
 } from "../../grid/Grid";
 import { GridStore } from "../../stores/Store";
 import { Targeting } from "../../constants/AppConstants";
@@ -22,6 +22,7 @@ export default class Tower extends Graphics {
     this.damage = 2;
     this.distance = 10;
     this.delay = 0;
+    this.splashSize = 0;
 
     const screenPos = gridPosition(x, y);
     const colour = 0xaaaaff;
@@ -32,10 +33,11 @@ export default class Tower extends Graphics {
         this.drawCircle(0, 0, size / 2);
 
         this.damage = 10;
-        this.maxDelay = 120;
+        this.maxDelay = 90;
         this.range = tileSize * 5;
         this.lineOfSight = tileSize * 7;
         this.distance = 50;
+        this.splashSize = (tileSize * 2.5) / 2;
         break;
       case 1:
         this.lineStyle(1, colour)
@@ -43,11 +45,12 @@ export default class Tower extends Graphics {
           .lineTo(-size / 2, size / 2)
           .lineTo(size / 2, size / 2)
           .lineTo(0, -size / 2);
-        this.maxDelay = 90;
+        this.maxDelay = 20;
         this.range = tileSize * 3;
         this.lineOfSight = tileSize * 5;
         this.damage = 5;
         this.distance = 20;
+        this.splashSize = (tileSize * 0.4) / 2;
         break;
       default:
         this.lineStyle(1, colour);
@@ -115,7 +118,15 @@ export default class Tower extends Graphics {
     let preEnemyDamage = enemy.health;
     for (var b = 0; b < bullets.length; b++) {
       const bullet = bullets[b];
-      if (bullet.enemy != enemy) {
+      if (
+        bullet.enemy != enemy &&
+        !bullet.isEnemyInSplashRadius(
+          bullet.targetX,
+          bullet.targetY,
+          this.splashSize,
+          enemy
+        )
+      ) {
         continue;
       }
       preEnemyDamage -= bullet.damage;
@@ -129,42 +140,10 @@ export default class Tower extends Graphics {
 
   shoot(enemy) {
     const distance = this.distance;
-    const tileSize = gridTileSize();
 
     // 1. calculate where enemy will be in in X ms
-    let found = false;
-    let oldX = enemy.position.x;
-    let oldY = enemy.position.y;
-    let distanceTravelled = 0;
-
-    for (let i = 0; i < enemy.targets.length; i++) {
-      const target = gridPosition(enemy.targets[i].x, enemy.targets[i].y);
-
-      let virtualMove = gridMoveTowards(
-        oldX,
-        oldY,
-        target.x,
-        target.y,
-        distance - distanceTravelled
-      );
-
-      distanceTravelled += Math.max(
-        Math.abs(virtualMove.x),
-        Math.abs(virtualMove.y)
-      );
-
-      oldX += virtualMove.x;
-      oldY += virtualMove.y;
-
-      // console.log(bullet.x, bullet.y, oldX, oldY);
-
-      if (distanceTravelled >= distance) {
-        found = true;
-        break;
-      }
-    }
-
-    if (false === found) {
+    const prediction = predictEnemyPosition(enemy, distance);
+    if (!prediction) {
       return false;
     }
 
@@ -172,8 +151,8 @@ export default class Tower extends Graphics {
     const shootDistance = gridDistance(
       this.position.x,
       this.position.y,
-      oldX,
-      oldY
+      prediction.x,
+      prediction.y
     );
 
     if (shootDistance < this.range) {
@@ -182,9 +161,14 @@ export default class Tower extends Graphics {
         enemy: enemy,
         damage: this.damage,
         distance: shootDistance / (distance / enemy.speed),
-        splashSize: this.type == 2 ? (tileSize * 2.5) / 2 : 0,
+        splashSize: this.splashSize,
       });
-      bullet.setPath(this.position.x, this.position.y, oldX, oldY);
+      bullet.setPath(
+        this.position.x,
+        this.position.y,
+        prediction.x,
+        prediction.y
+      );
       this.parent.addChild(bullet);
       GridStore.dispatch(addBullet(bullet));
       this.isShooting = true;
