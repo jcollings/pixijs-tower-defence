@@ -1,6 +1,10 @@
 import { Container, Graphics } from "pixi.js";
 import Store from "../stores/Store";
-import Grid, { gridDistance, gridPosition } from "../grid/Grid";
+import Grid, {
+  gridDistance,
+  gridPosition,
+  gridMoveTowards,
+} from "../grid/Grid";
 import { AnimationStore, GridStore } from "../stores/Store";
 import {
   addEnemy,
@@ -12,6 +16,7 @@ import {
 } from "../stores/GridStore";
 import Enemy from "../displayobjects/Enemy/Enemy";
 import Bullet from "../displayobjects/Bullet/Bullet";
+import Tile from "../displayobjects/Tile/Tile";
 
 const Targeting = {
   DEFAULT: Symbol("default"),
@@ -161,27 +166,9 @@ export default class Game extends Container {
   }
 
   addTile(x, y) {
-    let rectangle = new Graphics();
-    // rectangle.lineStyle(1, 0xFF3300, 1);
-    if (x % 2 == (y % 2 == 1 ? 0 : 1)) {
-      rectangle.beginFill(0x000011);
-    } else {
-      rectangle.beginFill(0x111122);
-    }
-
-    rectangle.drawRect(0, 0, this.tileSize, this.tileSize);
-    rectangle.endFill();
-    rectangle.x = x * this.tileSize;
-    rectangle.y = y * this.tileSize;
-
-    // rectangle.on("mousedown", (e) => {
-    //   console.log("clicked", x, y, this.grid.index(x, y));
-    // });
-
-    rectangle.interactive = true;
-
-    this.tiles.push(rectangle);
-    this.addChild(rectangle);
+    const tile = new Tile(x, y);
+    this.tiles.push(tile);
+    this.addChild(tile);
   }
 
   drawPath(path) {
@@ -335,24 +322,6 @@ export default class Game extends Container {
     });
   }
 
-  moveTowards(x, y, tx, ty, distance) {
-    const dx = tx - x;
-    const dy = ty - y;
-    const angle = Math.atan2(dy, dx);
-    const maxDistance = this.distance(x, y, tx, ty);
-
-    return {
-      x: Math.min(maxDistance, distance * Math.cos(angle)),
-      y: Math.min(maxDistance, distance * Math.sin(angle)),
-    };
-  }
-
-  distance(x1, y1, x2, y2) {
-    const a = x1 - x2;
-    const b = y1 - y2;
-    return Math.sqrt(a * a + b * b);
-  }
-
   shootFollow(tower, enemy) {
     // console.log(tower, enemy);
     tower.isShooting = true;
@@ -390,7 +359,7 @@ export default class Game extends Container {
         return;
       }
 
-      const move = this.moveTowards(
+      const move = gridMoveTowards(
         bulletData.sprite.x,
         bulletData.sprite.y,
         bulletData.target.sprite.x,
@@ -428,7 +397,7 @@ export default class Game extends Container {
     for (let i = 0; i < enemy.targets.length; i++) {
       const target = gridPosition(enemy.targets[i].x, enemy.targets[i].y);
 
-      let virtualMove = this.moveTowards(
+      let virtualMove = gridMoveTowards(
         oldX,
         oldY,
         target.x,
@@ -457,7 +426,7 @@ export default class Game extends Container {
     }
 
     // Calculate distance between start and end
-    const shootDistance = this.distance(
+    const shootDistance = gridDistance(
       tower.sprite.x,
       tower.sprite.y,
       oldX,
@@ -479,14 +448,5 @@ export default class Game extends Container {
 
       return true;
     }
-  }
-
-  isInCicle(a, b, x, y, r) {
-    var dist_points = (a - x) * (a - x) + (b - y) * (b - y);
-    r *= r;
-    if (dist_points < r) {
-      return true;
-    }
-    return false;
   }
 }
