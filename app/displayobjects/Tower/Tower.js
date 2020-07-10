@@ -40,15 +40,9 @@ export default class Tower extends Graphics {
       case 1:
         this.lineStyle(1, colour)
           .moveTo(0, -size / 2)
-          .lineTo(-size / 2, size / 2);
-
-        this.lineStyle(1, colour)
-          .moveTo(0, -size / 2)
-          .lineTo(size / 2, size / 2);
-
-        this.lineStyle(1, colour)
-          .moveTo(-size / 2, size / 2)
-          .lineTo(size / 2, size / 2);
+          .lineTo(-size / 2, size / 2)
+          .lineTo(size / 2, size / 2)
+          .lineTo(0, -size / 2);
         this.maxDelay = 90;
         this.range = tileSize * 3;
         this.lineOfSight = tileSize * 5;
@@ -99,7 +93,6 @@ export default class Tower extends Graphics {
       if (Math.abs(dist) < this.lineOfSight) {
         if (this.shoot(enemy)) {
           this.delay = this.maxDelay;
-          console.log("test", this.delay);
 
           if (this.delay > 0) {
             break;

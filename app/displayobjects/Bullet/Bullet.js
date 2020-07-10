@@ -29,17 +29,10 @@ export default class Bullet extends Graphics {
         this.drawCircle(0, 0, this.size / 2);
         break;
       case 1:
-        this.lineStyle(1, 0xccccff)
-          .moveTo(0, -this.size / 2)
-          .lineTo(-this.size / 2, this.size / 2);
-
-        this.lineStyle(1, 0xccccff)
-          .moveTo(0, -this.size / 2)
-          .lineTo(this.size / 2, this.size / 2);
-
-        this.lineStyle(1, 0xccccff)
-          .moveTo(-this.size / 2, this.size / 2)
-          .lineTo(this.size / 2, this.size / 2);
+        this.moveTo(0, -this.size / 2)
+          .lineTo(-this.size / 2, this.size / 2)
+          .lineTo(this.size / 2, this.size / 2)
+          .lineTo(0, -this.size / 2);
         break;
       default:
         this.drawRect(-this.size * 0.5, -this.size * 0.5, this.size, this.size);
