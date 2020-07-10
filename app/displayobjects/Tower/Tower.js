@@ -91,6 +91,10 @@ export default class Tower extends Graphics {
         enemy.position.y
       );
       if (Math.abs(dist) < this.lineOfSight) {
+        if (this.isEnemyAlreadyDead(enemy)) {
+          continue;
+        }
+
         if (this.shoot(enemy)) {
           this.delay = this.maxDelay;
 
@@ -100,6 +104,27 @@ export default class Tower extends Graphics {
         }
       }
     }
+  }
+
+  /**
+   * Check to see if existing bullets aimed at enemy is already killing it
+   * @param {Enemy} enemy
+   */
+  isEnemyAlreadyDead(enemy) {
+    const bullets = GridStore.getState().bullets;
+    let preEnemyDamage = enemy.health;
+    for (var b = 0; b < bullets.length; b++) {
+      const bullet = bullets[b];
+      if (bullet.enemy != enemy) {
+        continue;
+      }
+      preEnemyDamage -= bullet.damage;
+      if (preEnemyDamage <= 0) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   shoot(enemy) {
