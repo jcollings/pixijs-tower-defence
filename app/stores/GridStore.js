@@ -5,16 +5,23 @@ const ADD_TOWER = "seed/grid/ADD_TOWER";
 const REMOVE_TOWER = "seed/grid/REMOVE_TOWER";
 const ADD_BULLET = "seed/grid/ADD_BULLET";
 const REMOVE_BULLET = "seed/grid/REMOVE_BULLET";
+const UPDATE_SELECTION = "seed/grid/UPDATE_SELECTION";
+const ADD_ENERGY = "seed/grid/ADD_ENERGY";
+const UPDATE_ENERGY = "seed/grid/UPDATE_ENERGY";
+const UPDATE_WAVE = "seed/grid/UPDATE_WAVE";
 
 export default (
   state = {
     width: 10,
     height: 10,
     tileSize: 50,
+    selection: 1,
     tiles: [],
     enemies: [],
-    towers: [],
+    towers: new Array(10 * 10).fill(null),
     bullets: [],
+    energy: 0,
+    wave: 0,
   },
   action = {}
 ) => {
@@ -42,9 +49,14 @@ export default (
         enemies: enemies,
       };
     case ADD_TOWER:
+      const tmpTowers = [...state.towers];
+      if (tmpTowers[action.index] !== null) {
+        tmpTowers[action.index].destroy();
+      }
+      tmpTowers[action.index] = action.tower;
       return {
         ...state,
-        towers: [...state.towers, action.tower],
+        towers: tmpTowers,
       };
     case REMOVE_TOWER:
       let towers = [...state.towers];
@@ -72,6 +84,30 @@ export default (
         ...state,
         bullets: bullets,
       };
+    case UPDATE_SELECTION:
+      return {
+        ...state,
+        selection: action.value,
+      };
+      break;
+    case UPDATE_ENERGY:
+      return {
+        ...state,
+        energy: action.value,
+      };
+      break;
+    case ADD_ENERGY:
+      return {
+        ...state,
+        energy: state.energy + action.value,
+      };
+      break;
+    case UPDATE_WAVE:
+      return {
+        ...state,
+        wave: action.value,
+      };
+      break;
     default:
       return state;
   }
@@ -94,8 +130,9 @@ export const removeEnemy = (enemy) => ({
   enemy,
 });
 
-export const addTower = (tower) => ({
+export const addTower = (index, tower) => ({
   type: ADD_TOWER,
+  index,
   tower,
 });
 
@@ -112,4 +149,24 @@ export const addBullet = (bullet) => ({
 export const removeBullet = (bullet) => ({
   type: REMOVE_BULLET,
   bullet,
+});
+
+export const updateSelection = (value) => ({
+  type: UPDATE_SELECTION,
+  value,
+});
+
+export const addEnergy = (value) => ({
+  type: ADD_ENERGY,
+  value,
+});
+
+export const updateEnergy = (value) => ({
+  type: UPDATE_ENERGY,
+  value,
+});
+
+export const updateWave = (value) => ({
+  type: UPDATE_WAVE,
+  value,
 });

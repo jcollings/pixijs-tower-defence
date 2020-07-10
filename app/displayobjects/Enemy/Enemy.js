@@ -1,22 +1,34 @@
 import { Graphics, Container } from "pixi.js";
-import { gridPosition, gridMoveTowards } from "../../grid/Grid";
+import { gridPosition, gridMoveTowards, gridTileSize } from "../../grid/Grid";
 
 export default class Enemy extends Graphics {
   constructor(args = {}) {
     super();
 
     this.targets = null;
-    this.level = args.level ? args.level : 0;
+    this.level = args.level ? parseInt(args.level) : 0;
     this.size = 8 + this.level;
     this.speed = args.speed ? args.speed : 2;
     this.health = 5 + this.level;
     this.maxHealth = 0 + this.health;
+    this.offsetX = (gridTileSize() - this.size) * Math.random();
+    this.offsetY = ((gridTileSize() - this.size) * Math.random()) / 2;
+    // this.offset = this.offset - this.offset / 2;
+  }
+
+  getEnergy() {
+    return this.level;
   }
 
   drawEnemy(color = 0xffffff) {
     this.clear();
     this.beginFill(color);
-    this.drawRect(-this.size * 0.5, -this.size * 0.5, this.size, this.size);
+    this.drawRect(
+      -this.offsetX * 0.5,
+      -this.offsetY * 0.5,
+      this.size,
+      this.size
+    );
     this.endFill();
   }
 
@@ -40,7 +52,7 @@ export default class Enemy extends Graphics {
     } else if (healthPercentage < 0.5) {
       this.drawEnemy(0xffff00);
     } else if (healthPercentage < 1) {
-      this.drawEnemy(0x0000ff);
+      this.drawEnemy(0x00ff00);
     }
 
     const { x, y } = this.targets[0];

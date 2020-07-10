@@ -63,6 +63,24 @@ export const gridHeight = () => {
   return GridStore.getState().height;
 };
 
+export const gridInGrid = (index) => {
+  if (index < 0 || index >= gridWidth() * gridHeight()) {
+    return false;
+  }
+
+  return true;
+};
+
+export const gridIndex = (x, y) => {
+  const width = gridWidth();
+  const height = gridWidth();
+  const index = x + width * y;
+  if (gridInGrid(index) && x >= 0 && y >= 0 && x < width && y < height) {
+    return index;
+  }
+  return -1;
+};
+
 export const gridTileSize = () => {
   return GridStore.getState().tileSize;
 };

@@ -37,7 +37,7 @@ export default class Tower extends Graphics {
         this.range = tileSize * 5;
         this.lineOfSight = tileSize * 7;
         this.distance = 50;
-        this.splashSize = (tileSize * 2.5) / 2;
+        this.splashSize = (tileSize * 1.5) / 2;
         break;
       case 1:
         this.lineStyle(1, colour)

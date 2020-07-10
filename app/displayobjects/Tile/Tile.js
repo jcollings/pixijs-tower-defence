@@ -1,5 +1,9 @@
 import { Graphics } from "pixi.js";
-import { gridTileSize } from "../../grid/Grid";
+import { gridTileSize, gridIndex } from "../../grid/Grid";
+import Tower from "../Tower/Tower";
+import { Targeting } from "../../constants/AppConstants";
+import { GridStore } from "../../stores/Store";
+import { addTower } from "../../stores/GridStore";
 
 export default class Tile extends Graphics {
   constructor(x, y, args = {}) {
@@ -15,5 +19,22 @@ export default class Tile extends Graphics {
     this.drawRect(0, 0, tileSize, tileSize);
     this.endFill();
     this.position.set(x * tileSize, y * tileSize);
+
+    this.interactive = true;
+    this.on("mouseup", (event) => {
+      GridStore.getState().selection;
+
+      let tower = null;
+      const { selection } = GridStore.getState();
+      if (selection > 0) {
+        tower = new Tower(x, y, {
+          targeting: Targeting.DEFAULT,
+          type: selection - 1,
+        });
+        this.parent.addChild(tower);
+      }
+
+      GridStore.dispatch(addTower(gridIndex(x, y), tower));
+    });
   }
 }

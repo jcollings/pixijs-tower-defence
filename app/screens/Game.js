@@ -1,25 +1,20 @@
-import { Container, Graphics } from "pixi.js";
-import Store from "../stores/Store";
-import Grid, {
-  gridDistance,
-  gridPosition,
-  gridMoveTowards,
-  gridTileSize,
-} from "../grid/Grid";
-import { AnimationStore, GridStore } from "../stores/Store";
+import { Container, Graphics, Text } from "pixi.js";
+import Grid from "../grid/Grid";
+import Store, { AnimationStore, GridStore } from "../stores/Store";
 import {
   addEnemy,
   removeEnemy,
   addTower,
-  addBullet,
   removeBullet,
   updateSize,
+  updateSelection,
+  addEnergy,
 } from "../stores/GridStore";
 import Enemy from "../displayobjects/Enemy/Enemy";
-import Bullet from "../displayobjects/Bullet/Bullet";
 import Tile from "../displayobjects/Tile/Tile";
 import Tower from "../displayobjects/Tower/Tower";
 import { Targeting } from "../constants/AppConstants";
+import { keyboard } from "../input/Keyboard";
 
 /**
  * Main Display Object
@@ -48,19 +43,19 @@ export default class Game extends Container {
 
     this.addGrid();
 
-    this.addTower(1, 3, { targeting: Targeting.WEAKEST, type: 0 });
-    this.addTower(3, 3, { targeting: Targeting.DEFAULT, type: 0 });
-    this.addTower(6, 6, { targeting: Targeting.WEAKEST, type: 0 });
+    // this.addTower(1, 3, { targeting: Targeting.WEAKEST, type: 0 });
+    // this.addTower(3, 3, { targeting: Targeting.DEFAULT, type: 0 });
+    // this.addTower(6, 6, { targeting: Targeting.WEAKEST, type: 0 });
 
-    this.addTower(3, 4, { targeting: Targeting.STRONGEST, type: 1 });
+    // this.addTower(3, 4, { targeting: Targeting.STRONGEST, type: 1 });
 
-    this.addTower(5, 2, { targeting: Targeting.DEFAULT, type: 2 });
-    this.addTower(5, 3, { targeting: Targeting.WEAKEST, type: 2 });
-    this.addTower(6, 2, { targeting: Targeting.LAST, type: 2 });
-    this.addTower(6, 3, { targeting: Targeting.STRONGEST, type: 2 });
+    // this.addTower(5, 2, { targeting: Targeting.DEFAULT, type: 2 });
+    // this.addTower(5, 3, { targeting: Targeting.WEAKEST, type: 2 });
+    // this.addTower(6, 2, { targeting: Targeting.LAST, type: 2 });
+    // this.addTower(6, 3, { targeting: Targeting.STRONGEST, type: 2 });
 
     let timer = 0;
-    let maxTime = 5;
+    let maxTime = 40;
     let enemies = -1;
     const path = [
       { x: 2, y: 0 },
@@ -71,11 +66,34 @@ export default class Game extends Container {
 
     this.drawPath(path);
 
+    let keyZero = keyboard("0"),
+      keyOne = keyboard("1"),
+      keyTwo = keyboard("2"),
+      keyThree = keyboard("3");
+
+    keyZero.release = () => {
+      GridStore.dispatch(updateSelection(0));
+    };
+
+    keyOne.release = () => {
+      GridStore.dispatch(updateSelection(1));
+    };
+
+    keyTwo.release = () => {
+      GridStore.dispatch(updateSelection(2));
+    };
+
+    keyThree.release = () => {
+      GridStore.dispatch(updateSelection(3));
+    };
+
     AnimationStore.subscribe(() => {
       // Update All Towers
-      GridStore.getState().towers.forEach((tower) => {
-        tower.update();
-      });
+      GridStore.getState()
+        .towers.filter((tower) => tower !== null)
+        .forEach((tower) => {
+          tower.update();
+        });
 
       // Update All Bullets
       GridStore.getState().bullets.forEach((bullet) => {
@@ -92,6 +110,10 @@ export default class Game extends Container {
         enemy.update();
 
         if (enemy.health <= 0 || enemy.targets.length <= 0) {
+          if (enemy.health <= 0) {
+            GridStore.dispatch(addEnergy(enemy.getEnergy()));
+          }
+
           enemy.destroy();
           GridStore.dispatch(removeEnemy(enemy));
         }
@@ -119,6 +141,24 @@ export default class Game extends Container {
           enemies--;
         }
       }
+    });
+
+    const fontSize = 12;
+    let text = new Text("Energy: 0\nWave: 0", {
+      fontFamily: "Arial",
+      fontSize: fontSize,
+      lineHeight: fontSize * 1.2,
+      fill: 0xffffff,
+      align: "left",
+    });
+
+    text.anchor.set(0, 0);
+    text.position.set(10, 10);
+    this.addChild(text);
+
+    GridStore.subscribe(() => {
+      const { energy, wave } = GridStore.getState();
+      text.text = "Energy: " + energy + "\nWave: " + wave;
     });
   }
 
