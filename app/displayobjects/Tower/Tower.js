@@ -1,4 +1,4 @@
-import { Graphics } from "pixi.js";
+import { Graphics, Text } from "pixi.js";
 import {
   gridPosition,
   gridTileSize,
@@ -6,40 +6,47 @@ import {
   predictEnemyPosition,
 } from "../../grid/Grid";
 import { GridStore } from "../../stores/Store";
-import { Targeting } from "../../constants/AppConstants";
+import {
+  Targeting,
+  towerBaseStats,
+  towerUpgradeStats,
+} from "../../constants/AppConstants";
 import Bullet from "../Bullet/Bullet";
 import { addBullet } from "../../stores/GridStore";
 
 export default class Tower extends Graphics {
   constructor(x, y, args = {}) {
     super();
-    const tileSize = gridTileSize();
-    const size = 30;
-    this.type = args.type ? args.type : 0;
-    this.range = tileSize * 1.5;
-    this.lineOfSight = tileSize * 2;
-    this.maxDelay = 10;
-    this.damage = 2;
-    this.distance = 10;
-    this.delay = 0;
-    this.splashSize = 0;
-    this.cost = 100;
-
     const screenPos = gridPosition(x, y);
+    this.type = args.type ? args.type : 0;
+    this.level = args.level ? args.level : 1;
+
+    this.applyStats();
+    this.position.set(screenPos.x, screenPos.y);
+  }
+
+  applyStats() {
+    const stats = towerBaseStats;
+    this.delay = 0;
+    this.range = stats[this.type].range ? stats[this.type].range : 1;
+    this.sight = stats[this.type].sight ? stats[this.type].sight : 1;
+    this.damage = stats[this.type].damage ? stats[this.type].damage : 1;
+    this.maxDelay = stats[this.type].delay ? stats[this.type].delay : 10;
+    this.splash = stats[this.type].splash ? stats[this.type].splash : 0;
+    this.distance = stats[this.type].distance ? stats[this.type].distance : 10;
+    this.cost = stats[this.type].cost ? stats[this.type].cost : 100;
+
+    for (const [key, value] of Object.entries(towerUpgradeStats[this.type])) {
+      this[key] += value * this.level - 1;
+    }
+
+    const size = 30;
     const colour = 0xaaaaff;
 
     switch (this.type) {
       case 2:
         this.lineStyle(1, colour);
         this.drawCircle(0, 0, size / 2);
-
-        this.damage = 10;
-        this.maxDelay = 90;
-        this.range = tileSize * 5;
-        this.lineOfSight = tileSize * 7;
-        this.distance = 50;
-        this.splashSize = (tileSize * 1.5) / 2;
-        this.cost = 200;
         break;
       case 1:
         this.lineStyle(1, colour)
@@ -47,20 +54,24 @@ export default class Tower extends Graphics {
           .lineTo(-size / 2, size / 2)
           .lineTo(size / 2, size / 2)
           .lineTo(0, -size / 2);
-        this.maxDelay = 20;
-        this.range = tileSize * 3;
-        this.lineOfSight = tileSize * 5;
-        this.damage = 5;
-        this.distance = 20;
-        this.splashSize = (tileSize * 0.4) / 2;
-        this.cost = 150;
         break;
       default:
         this.lineStyle(1, colour);
         this.drawRect(-size * 0.5, -size * 0.5, size, size);
         break;
     }
-    this.position.set(screenPos.x, screenPos.y);
+
+    // write text
+    const fontSize = 12;
+    let text = new Text(this.level, {
+      fontFamily: "Arial",
+      fontSize: fontSize,
+      lineHeight: fontSize * 1.2,
+      fill: colour,
+      align: "center",
+    });
+    text.anchor.set(0.5, 0.5);
+    this.addChild(text);
   }
 
   getCost() {
@@ -100,7 +111,7 @@ export default class Tower extends Graphics {
         enemy.position.x,
         enemy.position.y
       );
-      if (Math.abs(dist) < this.lineOfSight) {
+      if (Math.abs(dist) < this.getSight()) {
         if (this.isEnemyAlreadyDead(enemy)) {
           continue;
         }
@@ -130,7 +141,7 @@ export default class Tower extends Graphics {
         !bullet.isEnemyInSplashRadius(
           bullet.targetX,
           bullet.targetY,
-          this.splashSize,
+          this.getSplash(),
           enemy
         )
       ) {
@@ -143,6 +154,21 @@ export default class Tower extends Graphics {
     }
 
     return false;
+  }
+
+  getRange() {
+    const tileSize = gridTileSize();
+    return this.range * tileSize;
+  }
+
+  getSight() {
+    const tileSize = gridTileSize();
+    return this.sight * tileSize;
+  }
+
+  getSplash() {
+    const tileSize = gridTileSize();
+    return this.splash * tileSize;
   }
 
   shoot(enemy) {
@@ -162,13 +188,13 @@ export default class Tower extends Graphics {
       prediction.y
     );
 
-    if (shootDistance < this.range) {
+    if (shootDistance < this.getRange()) {
       const bullet = new Bullet({
         type: this.type,
         enemy: enemy,
         damage: this.damage,
         distance: shootDistance / (distance / enemy.speed),
-        splashSize: this.splashSize,
+        splash: this.getSplash(),
       });
       bullet.setPath(
         this.position.x,

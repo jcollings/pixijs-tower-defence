@@ -6,9 +6,9 @@ export default class Enemy extends Graphics {
     super();
 
     this.targets = null;
-    this.level = args.level ? parseInt(args.level) : 0;
+    this.level = args.level ? parseInt(args.level) : 1;
     this.size = 8 + this.level;
-    this.speed = args.speed ? args.speed : 2;
+    this.speed = args.speed ? 2 + args.speed : 2;
     this.health = 5 + this.level;
     this.maxHealth = 0 + this.health;
     this.offsetX = (gridTileSize() - this.size) * Math.random();

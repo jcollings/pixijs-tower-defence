@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from "pixi.js";
-import Grid from "../grid/Grid";
+import Grid, { gridIndex } from "../grid/Grid";
 import Store, { AnimationStore, GridStore } from "../stores/Store";
 import {
   addEnemy,
@@ -13,7 +13,6 @@ import {
 import Enemy from "../displayobjects/Enemy/Enemy";
 import Tile from "../displayobjects/Tile/Tile";
 import Tower from "../displayobjects/Tower/Tower";
-import { Targeting } from "../constants/AppConstants";
 import { keyboard } from "../input/Keyboard";
 
 /**
@@ -32,31 +31,11 @@ export default class Game extends Container {
     this.tileSize = 50;
     this.tileX = 10;
     this.tileY = 10;
-
     this.tiles = [];
-    // this.towers = [];
-    // this.bullets = [];
-
-    // GridStore.subscribe(() => {
-    //   console.log(GridStore.getState());
-    // });
+    this.enemies = [];
 
     this.addGrid();
 
-    // this.addTower(1, 3, { targeting: Targeting.WEAKEST, type: 0 });
-    // this.addTower(3, 3, { targeting: Targeting.DEFAULT, type: 0 });
-    // this.addTower(6, 6, { targeting: Targeting.WEAKEST, type: 0 });
-
-    // this.addTower(3, 4, { targeting: Targeting.STRONGEST, type: 1 });
-
-    // this.addTower(5, 2, { targeting: Targeting.DEFAULT, type: 2 });
-    // this.addTower(5, 3, { targeting: Targeting.WEAKEST, type: 2 });
-    // this.addTower(6, 2, { targeting: Targeting.LAST, type: 2 });
-    // this.addTower(6, 3, { targeting: Targeting.STRONGEST, type: 2 });
-
-    let timer = 0;
-    let maxTime = 80;
-    let enemies = -1;
     const path = [
       { x: 2, y: 0 },
       { x: 2, y: 5 },
@@ -65,6 +44,11 @@ export default class Game extends Container {
     ];
 
     this.drawPath(path);
+
+    this.addTower(3, 4, {
+      type: 2,
+      level: 1,
+    });
 
     let keyZero = keyboard("0"),
       keyOne = keyboard("1"),
@@ -87,7 +71,16 @@ export default class Game extends Container {
       GridStore.dispatch(updateSelection(3));
     };
 
+    let energyTick = 0;
+
     AnimationStore.subscribe(() => {
+      // Add energy every second
+      energyTick--;
+      if (energyTick <= 0) {
+        GridStore.dispatch(addEnergy(1));
+        energyTick = 60;
+      }
+
       // Update All Towers
       GridStore.getState()
         .towers.filter((tower) => tower !== null)
@@ -120,28 +113,7 @@ export default class Game extends Container {
       });
     });
 
-    const cancelStore = AnimationStore.subscribe(() => {
-      if (enemies === 1) {
-        cancelStore();
-        return;
-      }
-
-      timer +=
-        AnimationStore.getState().tick - AnimationStore.getState().previousTick;
-
-      if (timer > maxTime) {
-        timer -= maxTime;
-        maxTime -= 0.5; //0.05;
-        maxTime = Math.max(maxTime, 5);
-        this.spawnEnemy(path, {
-          level: Math.random() * 10,
-          speed: Math.random() * 3 + 1,
-        });
-        if (enemies > -1) {
-          enemies--;
-        }
-      }
-    });
+    this.spawnEnemies(path);
 
     const fontSize = 12;
     let text = new Text("Energy: 0\nWave: 0", {
@@ -159,6 +131,55 @@ export default class Game extends Container {
     GridStore.subscribe(() => {
       const { energy, wave } = GridStore.getState();
       text.text = "Energy: " + energy + "\nWave: " + wave;
+    });
+  }
+
+  spawnEnemies(path) {
+    let maxTime = 80;
+    let enemyTimer = 0;
+    let availablePoints = 0;
+
+    AnimationStore.subscribe(() => {
+      enemyTimer++;
+      if (enemyTimer > maxTime) {
+        maxTime -= 0.5; //0.05;
+        maxTime = Math.max(maxTime, 10);
+        enemyTimer = 0;
+
+        if (this.enemies.length > 0) {
+          const { level, speed } = this.enemies.shift();
+          this.addEnemy(path, {
+            level: level,
+            speed: speed,
+          });
+        } else {
+          availablePoints++;
+
+          let pointsSpent = 0;
+          while (pointsSpent < availablePoints) {
+            const level = Math.ceil(
+              Math.min(
+                Math.random() * Math.max(Math.floor(availablePoints / 100), 1),
+                availablePoints
+              )
+            );
+            const speed = Math.min(Math.random() * 3, availablePoints - level);
+
+            console.log({
+              level: level,
+              speed: speed,
+            });
+
+            this.enemies.push({
+              level: level,
+              speed: speed,
+            });
+
+            pointsSpent += level;
+            pointsSpent += speed;
+          }
+        }
+      }
     });
   }
 
@@ -240,6 +261,6 @@ export default class Game extends Container {
     const tower = new Tower(x, y, args);
 
     this.addChild(tower);
-    GridStore.dispatch(addTower(tower));
+    GridStore.dispatch(addTower(gridIndex(x, y), tower));
   }
 }

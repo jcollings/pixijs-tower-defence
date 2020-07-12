@@ -16,7 +16,7 @@ export default class Bullet extends Graphics {
     this.damage = args.damage ? args.damage : 1;
     this.distance = args.distance ? args.distance : 10;
     this.size = Math.max(8, 1 * this.damage);
-    this.splashSize = args.splashSize ? args.splashSize : 0;
+    this.splash = args.splash ? args.splash : 0;
     this.complete = false;
     this.splashing = false;
 
@@ -84,8 +84,8 @@ export default class Bullet extends Graphics {
     }
 
     if (this.position.x == this.targetX && this.position.y == this.targetY) {
-      if (this.splashSize > 0) {
-        const splashRadius = this.splashSize;
+      if (this.splash > 0) {
+        const splashRadius = this.splash;
         let splash = new Graphics();
         let splashData = {
           max: 5,

@@ -50,10 +50,19 @@ export default (
       };
     case ADD_TOWER:
       const tmpTowers = [...state.towers];
-      if (tmpTowers[action.index] !== null) {
+      let newTower = action.tower;
+      let level = 1;
+
+      if (tmpTowers[action.index] !== null && newTower !== null) {
+        if (tmpTowers[action.index].type == action.tower.type) {
+          level += tmpTowers[action.index].level;
+          newTower.level = level;
+          newTower.applyStats();
+        }
+
         tmpTowers[action.index].destroy();
       }
-      tmpTowers[action.index] = action.tower;
+      tmpTowers[action.index] = newTower;
       return {
         ...state,
         towers: tmpTowers,
