@@ -21,6 +21,18 @@ export default class Tower extends Graphics {
     this.type = args.type ? args.type : 0;
     this.level = args.level ? args.level : 1;
 
+    const colour = 0xaaaaff;
+    const fontSize = 12;
+    this.text = new Text(this.level, {
+      fontFamily: "Arial",
+      fontSize: fontSize,
+      lineHeight: fontSize * 1.2,
+      fill: colour,
+      align: "center",
+    });
+    this.text.anchor.set(0.5, 0.5);
+    this.addChild(this.text);
+
     this.applyStats();
     this.position.set(screenPos.x, screenPos.y);
   }
@@ -62,16 +74,8 @@ export default class Tower extends Graphics {
     }
 
     // write text
-    const fontSize = 12;
-    let text = new Text(this.level, {
-      fontFamily: "Arial",
-      fontSize: fontSize,
-      lineHeight: fontSize * 1.2,
-      fill: colour,
-      align: "center",
-    });
-    text.anchor.set(0.5, 0.5);
-    this.addChild(text);
+    this.text.text = this.level;
+    // this.addChild(text);
   }
 
   getCost() {

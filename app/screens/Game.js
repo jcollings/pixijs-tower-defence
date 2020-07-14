@@ -45,10 +45,10 @@ export default class Game extends Container {
 
     this.drawPath(path);
 
-    this.addTower(3, 4, {
-      type: 2,
-      level: 1,
-    });
+    // this.addTower(3, 4, {
+    //   type: 2,
+    //   level: 1,
+    // });
 
     let keyZero = keyboard("0"),
       keyOne = keyboard("1"),
@@ -140,44 +140,39 @@ export default class Game extends Container {
     let availablePoints = 0;
 
     AnimationStore.subscribe(() => {
+      if (this.enemies.length > 0) {
+        const { level, speed } = this.enemies.shift();
+        this.addEnemy(path, {
+          level: level,
+          speed: speed,
+        });
+        return;
+      }
+
       enemyTimer++;
       if (enemyTimer > maxTime) {
         maxTime -= 0.5; //0.05;
         maxTime = Math.max(maxTime, 10);
         enemyTimer = 0;
 
-        if (this.enemies.length > 0) {
-          const { level, speed } = this.enemies.shift();
-          this.addEnemy(path, {
+        availablePoints++;
+
+        let pointsSpent = 0;
+        while (pointsSpent < availablePoints) {
+          const level = Math.ceil(
+            Math.min(
+              Math.random() * Math.max(Math.floor(availablePoints / 100), 1),
+              availablePoints
+            )
+          );
+          const speed = Math.min(Math.random() * 3, availablePoints - level);
+          this.enemies.push({
             level: level,
             speed: speed,
           });
-        } else {
-          availablePoints++;
 
-          let pointsSpent = 0;
-          while (pointsSpent < availablePoints) {
-            const level = Math.ceil(
-              Math.min(
-                Math.random() * Math.max(Math.floor(availablePoints / 100), 1),
-                availablePoints
-              )
-            );
-            const speed = Math.min(Math.random() * 3, availablePoints - level);
-
-            console.log({
-              level: level,
-              speed: speed,
-            });
-
-            this.enemies.push({
-              level: level,
-              speed: speed,
-            });
-
-            pointsSpent += level;
-            pointsSpent += speed;
-          }
+          pointsSpent += level;
+          pointsSpent += speed;
         }
       }
     });

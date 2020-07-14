@@ -8,7 +8,7 @@ export const Targeting = {
 };
 export const towerBaseStats = [
   {
-    delay: 10,
+    delay: 30,
     distance: 10,
     range: 1.5,
     sight: 2,
@@ -17,7 +17,7 @@ export const towerBaseStats = [
     cost: 100,
   },
   {
-    delay: 20,
+    delay: 60,
     distance: 10,
     range: 3,
     sight: 5,

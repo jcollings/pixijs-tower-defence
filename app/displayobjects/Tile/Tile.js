@@ -1,5 +1,5 @@
 import { Graphics } from "pixi.js";
-import { gridTileSize, gridIndex } from "../../grid/Grid";
+import Grid, { gridTileSize, gridIndex } from "../../grid/Grid";
 import Tower from "../Tower/Tower";
 import { Targeting } from "../../constants/AppConstants";
 import { GridStore } from "../../stores/Store";
@@ -27,16 +27,20 @@ export default class Tile extends Graphics {
       let tower = null;
       const { selection, energy } = GridStore.getState();
       if (selection > 0) {
+        const existingTower = GridStore.getState().towers[gridIndex(x, y)];
+        const level = existingTower ? existingTower.level + 1 : 1;
+
         tower = new Tower(x, y, {
           targeting: Targeting.DEFAULT,
           type: selection - 1,
+          level: level,
         });
         const cost = tower.getCost();
         if (cost <= energy) {
           this.parent.addChild(tower);
           GridStore.dispatch(addEnergy(-cost));
         } else {
-          tower = null;
+          return;
         }
       }
 
