@@ -47,18 +47,29 @@ export default class Tower extends Graphics {
     this.splash = stats[this.type].splash ? stats[this.type].splash : 0;
     this.distance = stats[this.type].distance ? stats[this.type].distance : 10;
     this.cost = stats[this.type].cost ? stats[this.type].cost : 100;
+    this.targeting = stats[this.type].targeting
+      ? stats[this.type].targeting
+      : Targeting.DEFAULT;
 
     for (const [key, value] of Object.entries(towerUpgradeStats[this.type])) {
-      this[key] += value * this.level - 1;
+      this[key] += value * (this.level - 1);
     }
 
     const size = 30;
     const colour = 0xaaaaff;
 
     switch (this.type) {
-      case 2:
+      case 3:
         this.lineStyle(1, colour);
         this.drawCircle(0, 0, size / 2);
+        break;
+      case 2:
+        this.lineStyle(1, colour)
+          .moveTo(0, -size / 2) // 0, -15
+          .lineTo(size / 2, 0) // 15, 0
+          .lineTo(0, size / 2) // 0, 15
+          .lineTo(-size / 2, 0) // -15, 0
+          .lineTo(0, -size / 2);
         break;
       case 1:
         this.lineStyle(1, colour)
@@ -79,7 +90,7 @@ export default class Tower extends Graphics {
   }
 
   getCost() {
-    return this.cost;
+    return Math.max(this.cost, this.cost * this.level);
   }
 
   update() {
@@ -102,6 +113,11 @@ export default class Tower extends Graphics {
       case Targeting.WEAKEST:
         enemyList.sort((a, b) => {
           return a.maxHealth - b.maxHealth;
+        });
+        break;
+      default:
+        enemyList.sort((a, b) => {
+          return b.distanceTravelled - a.distanceTravelled;
         });
         break;
     }

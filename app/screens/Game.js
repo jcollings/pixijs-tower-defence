@@ -14,6 +14,7 @@ import Enemy from "../displayobjects/Enemy/Enemy";
 import Tile from "../displayobjects/Tile/Tile";
 import Tower from "../displayobjects/Tower/Tower";
 import { keyboard } from "../input/Keyboard";
+import { enemyStats } from "../constants/AppConstants";
 
 /**
  * Main Display Object
@@ -53,7 +54,8 @@ export default class Game extends Container {
     let keyZero = keyboard("0"),
       keyOne = keyboard("1"),
       keyTwo = keyboard("2"),
-      keyThree = keyboard("3");
+      keyThree = keyboard("3"),
+      keyFour = keyboard("4");
 
     keyZero.release = () => {
       GridStore.dispatch(updateSelection(0));
@@ -69,6 +71,10 @@ export default class Game extends Container {
 
     keyThree.release = () => {
       GridStore.dispatch(updateSelection(3));
+    };
+
+    keyFour.release = () => {
+      GridStore.dispatch(updateSelection(4));
     };
 
     let energyTick = 0;
@@ -138,42 +144,80 @@ export default class Game extends Container {
     let maxTime = 80;
     let enemyTimer = 0;
     let availablePoints = 0;
+    let maxSpawnTimer = 10;
+    let spawnTimer = 0;
+
+    let enemySequence = [1];
 
     AnimationStore.subscribe(() => {
+      // spawn enemies from list
+      spawnTimer++;
       if (this.enemies.length > 0) {
-        const { level, speed } = this.enemies.shift();
-        this.addEnemy(path, {
-          level: level,
-          speed: speed,
-        });
-        return;
-      }
-
-      enemyTimer++;
-      if (enemyTimer > maxTime) {
-        maxTime -= 0.5; //0.05;
-        maxTime = Math.max(maxTime, 10);
-        enemyTimer = 0;
-
-        availablePoints++;
-
-        let pointsSpent = 0;
-        while (pointsSpent < availablePoints) {
-          const level = Math.ceil(
-            Math.min(
-              Math.random() * Math.max(Math.floor(availablePoints / 100), 1),
-              availablePoints
-            )
-          );
-          const speed = Math.min(Math.random() * 3, availablePoints - level);
-          this.enemies.push({
+        if (spawnTimer > maxSpawnTimer) {
+          const { level, speed } = this.enemies.shift();
+          this.addEnemy(path, {
             level: level,
             speed: speed,
           });
-
-          pointsSpent += level;
-          pointsSpent += speed;
+          spawnTimer = 0;
         }
+        return;
+      }
+
+      // generate new wave of enemies
+
+      enemyTimer++;
+      if (enemyTimer > maxTime) {
+        // maxTime -= 0.5; //0.05;
+        // maxTime = Math.max(maxTime, 10);
+        enemyTimer = 0;
+
+        availablePoints++;
+        let pointsSpent = 0;
+        // 1,3,7
+        const currentEnemySequenceIndex = enemySequence.length - 1;
+        if (enemySequence[currentEnemySequenceIndex] == availablePoints) {
+          enemySequence.push(enemySequence[currentEnemySequenceIndex] * 2 + 1);
+        }
+
+        let spawnedEnemyLevels = [];
+        let lastPointIndex = enemySequence.length - 1;
+        while (pointsSpent < availablePoints) {
+          while (
+            enemySequence[lastPointIndex] >
+            availablePoints - pointsSpent
+          ) {
+            lastPointIndex--;
+          }
+
+          if (enemyStats.length - 1 < lastPointIndex) {
+            lastPointIndex = enemyStats.length - 1;
+          }
+
+          const cost = enemySequence[lastPointIndex];
+          const enemyData = enemyStats[lastPointIndex];
+
+          const level = enemyData.level;
+          const speed = enemyData.speed;
+
+          // const enemyQuantity = Math.max(
+          //   enemySequence.length - 1 - lastPointIndex,
+          //   1
+          // );
+          const enemyQuantity = 2;
+          for (let i = 0; i < enemyQuantity; i++) {
+            this.enemies.push({
+              level: level,
+              speed: speed,
+            });
+          }
+
+          spawnedEnemyLevels.push([level, enemyQuantity]);
+
+          pointsSpent += cost;
+        }
+
+        // console.log("spawned", spawnedEnemyLevels);
       }
     });
   }

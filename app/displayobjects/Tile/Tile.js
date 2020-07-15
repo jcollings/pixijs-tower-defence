@@ -31,7 +31,6 @@ export default class Tile extends Graphics {
         const level = existingTower ? existingTower.level + 1 : 1;
 
         tower = new Tower(x, y, {
-          targeting: Targeting.DEFAULT,
           type: selection - 1,
           level: level,
         });

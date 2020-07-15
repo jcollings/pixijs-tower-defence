@@ -7,28 +7,25 @@ export default class Enemy extends Graphics {
 
     this.targets = null;
     this.level = args.level ? parseInt(args.level) : 1;
-    this.size = 8 + this.level;
-    this.speed = args.speed ? 2 + args.speed : 2;
-    this.health = 0 + this.level;
-    this.maxHealth = 0 + this.health;
-    this.offsetX = (gridTileSize() - this.size) * Math.random();
-    this.offsetY = ((gridTileSize() - this.size) * Math.random()) / 2;
-    // this.offset = this.offset - this.offset / 2;
+    this.size = 5 + this.level;
+    this.speed = args.speed ? 1 + Math.abs((args.speed - 1) * 0.5) : 1;
+    this.health = 1 + Math.max(0, Math.pow(this.level, this.level - 1));
+    this.maxHealth = this.health;
+    this.distanceTravelled = 0;
+    // this.offsetX = (gridTileSize() - this.size) * Math.random();
+    // this.offsetY = ((gridTileSize() - this.size) * Math.random()) / 2;
+    this.offsetX = 0;
+    this.offsetY = 0;
   }
 
   getEnergy() {
-    return this.level;
+    return this.level * 5;
   }
 
   drawEnemy(color = 0xffffff) {
     this.clear();
     this.beginFill(color);
-    this.drawRect(
-      -this.offsetX * 0.5,
-      -this.offsetY * 0.5,
-      this.size,
-      this.size
-    );
+    this.drawRect(-this.size * 0.5, -this.size * 0.5, this.size, this.size);
     this.endFill();
   }
 
@@ -65,6 +62,7 @@ export default class Enemy extends Graphics {
       target.y,
       this.speed
     );
+    this.distanceTravelled += Math.max(move.x, move.y);
     this.position.x += move.x;
     this.position.y += move.y;
 

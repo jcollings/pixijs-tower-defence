@@ -15,7 +15,7 @@ export default class Bullet extends Graphics {
     this.enemy = args.enemy ? args.enemy : null;
     this.damage = args.damage ? args.damage : 1;
     this.distance = args.distance ? args.distance : 10;
-    this.size = Math.max(8, 1 * this.damage);
+    this.size = Math.min(20, Math.max(8, 1 * this.damage));
     this.splash = args.splash ? args.splash : 0;
     this.complete = false;
     this.splashing = false;
@@ -28,8 +28,15 @@ export default class Bullet extends Graphics {
     this.clear();
     this.beginFill(0xccccff);
     switch (this.type) {
-      case 2:
+      case 3:
         this.drawCircle(0, 0, this.size / 2);
+        break;
+      case 2:
+        this.moveTo(0, -this.size / 2) // 0, -15
+          .lineTo(this.size / 2, 0) // 15, 0
+          .lineTo(0, this.size / 2) // 0, 15
+          .lineTo(-this.size / 2, 0) // -15, 0
+          .lineTo(0, -this.size / 2);
         break;
       case 1:
         this.moveTo(0, -this.size / 2)
