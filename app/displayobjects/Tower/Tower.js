@@ -39,7 +39,9 @@ export default class Tower extends Graphics {
 
   applyStats() {
     const stats = towerBaseStats;
-    this.delay = 0;
+    if (this.level === 1) {
+      this.delay = 0;
+    }
     this.range = stats[this.type].range ? stats[this.type].range : 1;
     this.sight = stats[this.type].sight ? stats[this.type].sight : 1;
     this.damage = stats[this.type].damage ? stats[this.type].damage : 1;
@@ -51,8 +53,10 @@ export default class Tower extends Graphics {
       ? stats[this.type].targeting
       : Targeting.DEFAULT;
 
+    // console.log(this.level);
     for (const [key, value] of Object.entries(towerUpgradeStats[this.type])) {
-      this[key] += value * (this.level - 1);
+      this[key] = value(this);
+      console.log(this.level, key, this[key]);
     }
 
     const size = 30;

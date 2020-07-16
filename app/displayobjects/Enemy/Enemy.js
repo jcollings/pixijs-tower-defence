@@ -9,7 +9,7 @@ export default class Enemy extends Graphics {
     this.level = args.level ? parseInt(args.level) : 1;
     this.size = 5 + this.level;
     this.speed = args.speed ? 1 + Math.abs((args.speed - 1) * 0.5) : 1;
-    this.health = 1 + Math.max(0, Math.pow(this.level, this.level - 1));
+    this.health = this.level;
     this.maxHealth = this.health;
     this.distanceTravelled = 0;
     // this.offsetX = (gridTileSize() - this.size) * Math.random();
@@ -19,7 +19,7 @@ export default class Enemy extends Graphics {
   }
 
   getEnergy() {
-    return this.level * 5;
+    return Math.floor((this.level + this.speed) * 3);
   }
 
   drawEnemy(color = 0xffffff) {

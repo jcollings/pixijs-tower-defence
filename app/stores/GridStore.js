@@ -8,6 +8,7 @@ const REMOVE_BULLET = "seed/grid/REMOVE_BULLET";
 const UPDATE_SELECTION = "seed/grid/UPDATE_SELECTION";
 const ADD_ENERGY = "seed/grid/ADD_ENERGY";
 const UPDATE_ENERGY = "seed/grid/UPDATE_ENERGY";
+const ADD_WAVE = "seed/grid/ADD_WAVE";
 const UPDATE_WAVE = "seed/grid/UPDATE_WAVE";
 
 export default (
@@ -104,6 +105,12 @@ export default (
         energy: state.energy + action.value,
       };
       break;
+    case ADD_WAVE:
+      return {
+        ...state,
+        wave: state.wave + action.value,
+      };
+      break;
     case UPDATE_WAVE:
       return {
         ...state,
@@ -165,6 +172,11 @@ export const addEnergy = (value) => ({
 
 export const updateEnergy = (value) => ({
   type: UPDATE_ENERGY,
+  value,
+});
+
+export const addWave = (value) => ({
+  type: ADD_WAVE,
   value,
 });
 

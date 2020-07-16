@@ -9,6 +9,7 @@ import {
   updateSize,
   updateSelection,
   addEnergy,
+  addWave,
 } from "../stores/GridStore";
 import Enemy from "../displayobjects/Enemy/Enemy";
 import Tile from "../displayobjects/Tile/Tile";
@@ -143,23 +144,28 @@ export default class Game extends Container {
   spawnEnemies(path) {
     let maxTime = 80;
     let enemyTimer = 0;
-    let availablePoints = 0;
+    let availablePoints = 1;
     let maxSpawnTimer = 10;
     let spawnTimer = 0;
 
     let enemySequence = [1];
+    let lastGroup = -1;
 
     AnimationStore.subscribe(() => {
       // spawn enemies from list
       spawnTimer++;
       if (this.enemies.length > 0) {
         if (spawnTimer > maxSpawnTimer) {
-          const { level, speed } = this.enemies.shift();
+          const { level, speed, group } = this.enemies.shift();
           this.addEnemy(path, {
             level: level,
             speed: speed,
           });
           spawnTimer = 0;
+          if (lastGroup !== group) {
+            lastGroup = group;
+            availablePoints++;
+          }
         }
         return;
       }
@@ -172,16 +178,25 @@ export default class Game extends Container {
         // maxTime = Math.max(maxTime, 10);
         enemyTimer = 0;
 
-        availablePoints++;
+        this.spawnEnemyQueue01();
+
         let pointsSpent = 0;
         // 1,3,7
         const currentEnemySequenceIndex = enemySequence.length - 1;
-        if (enemySequence[currentEnemySequenceIndex] == availablePoints) {
+        if (enemySequence[currentEnemySequenceIndex] <= availablePoints) {
           enemySequence.push(enemySequence[currentEnemySequenceIndex] * 2 + 1);
+          console.log("sequence", enemySequence);
         }
+
+        // console.log(
+        //   "check",
+        //   enemySequence[currentEnemySequenceIndex],
+        //   availablePoints
+        // );
 
         let spawnedEnemyLevels = [];
         let lastPointIndex = enemySequence.length - 1;
+        let groupCounter = 0;
         while (pointsSpent < availablePoints) {
           while (
             enemySequence[lastPointIndex] >
@@ -190,37 +205,43 @@ export default class Game extends Container {
             lastPointIndex--;
           }
 
-          if (enemyStats.length - 1 < lastPointIndex) {
-            lastPointIndex = enemyStats.length - 1;
-          }
+          // if (enemyStats.length - 1 < lastPointIndex) {
+          //   lastPointIndex = enemyStats.length - 1;
+          // }
 
-          const cost = enemySequence[lastPointIndex];
-          const enemyData = enemyStats[lastPointIndex];
+          const cost = lastPointIndex + 1; //enemySequence[lastPointIndex];
+          // const enemyData = enemyStats[lastPointIndex];
 
-          const level = enemyData.level;
-          const speed = enemyData.speed;
+          const level = lastPointIndex + 1;
+          const speed = 1;
 
           // const enemyQuantity = Math.max(
           //   enemySequence.length - 1 - lastPointIndex,
           //   1
           // );
-          const enemyQuantity = 2;
+          const enemyQuantity = 1;
           for (let i = 0; i < enemyQuantity; i++) {
             this.enemies.push({
               level: level,
               speed: speed,
+              group: groupCounter,
             });
           }
 
           spawnedEnemyLevels.push([level, enemyQuantity]);
 
           pointsSpent += cost;
+          groupCounter++;
         }
+
+        GridStore.dispatch(addWave(1));
 
         // console.log("spawned", spawnedEnemyLevels);
       }
     });
   }
+
+  spawnEnemyQueue01() {}
 
   spawnEnemy(path, args = {}) {
     this.addEnemy(path, args);
