@@ -15,7 +15,6 @@ import Enemy from "../displayobjects/Enemy/Enemy";
 import Tile from "../displayobjects/Tile/Tile";
 import Tower from "../displayobjects/Tower/Tower";
 import { keyboard } from "../input/Keyboard";
-import { enemyStats } from "../constants/AppConstants";
 
 /**
  * Main Display Object
@@ -46,16 +45,6 @@ export default class Game extends Container {
     ];
 
     this.drawPath(path);
-
-    this.addTower(3, 4, {
-      type: 0,
-      delay: 60,
-      cost: 0,
-      arc: 360,
-      range: 2,
-      damage: 0,
-      splash: 0,
-    });
 
     let keyZero = keyboard("0"),
       keyOne = keyboard("1"),
@@ -105,6 +94,13 @@ export default class Game extends Container {
         bullet.update();
 
         if (bullet.isComplete()) {
+          bullet.tower.bullets.in;
+
+          const bulletIndex = bullet.tower.bullets.indexOf(bullet);
+          if (bulletIndex !== -1) {
+            bullet.tower.bullets.splice(bulletIndex, 1);
+          }
+
           bullet.destroy();
           GridStore.dispatch(removeBullet(bullet));
           return;

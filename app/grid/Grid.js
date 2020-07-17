@@ -111,7 +111,7 @@ export const gridDistance = (x1, y1, x2, y2) => {
   return Math.sqrt(a * a + b * b);
 };
 
-export const isInCicle = (a, b, x, y, r) => {
+export const isInCircle = (a, b, x, y, r) => {
   var dist_points = (a - x) * (a - x) + (b - y) * (b - y);
   r *= r;
   if (dist_points < r) {
@@ -169,7 +169,7 @@ export const predictEnemyPosition = (enemy, distance) => {
   };
 };
 
-export const pointInTriangle = (point, triangle) => {
+export const isInTriangle = (point, triangle) => {
   //compute vectors & dot products
   var cx = point[0],
     cy = point[1],

@@ -23,6 +23,7 @@ export default class Tower extends Graphics {
     const screenPos = gridPosition(x, y);
     this.type = args.type ? args.type : 0;
     this.level = args.level ? args.level : 1;
+    this.bullets = [];
 
     const colour = 0xaaaaff;
     const fontSize = 12;
@@ -56,6 +57,9 @@ export default class Tower extends Graphics {
     this.targeting = stats[this.type].targeting
       ? stats[this.type].targeting
       : Targeting.DEFAULT;
+    this.maxBullets = stats[this.type].maxBullets
+      ? stats[this.type].maxBullets
+      : 0;
 
     // console.log(this.level);
     for (const [key, value] of Object.entries(towerUpgradeStats[this.type])) {
@@ -102,13 +106,35 @@ export default class Tower extends Graphics {
   }
 
   update() {
+    // apply active bullet limit
+    if (this.maxBullets > 0 && this.bullets.length >= this.maxBullets) {
+      return;
+    }
+
+    // console.log(this.delay, this.maxDelay);
+
     if (this.delay > 0) {
       this.delay--;
       return;
     }
 
-    const enemyList = GridStore.getState().enemies;
+    const targets = this.getEnemyTargets();
+    if (targets.length > 0) {
+      for (let i = 0; i < targets.length; i++) {
+        const enemy = targets[i];
+        if (this.shoot(enemy)) {
+          this.delay = this.maxDelay;
 
+          if (this.delay > 0) {
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  sortEnemyTargets(enemies) {
+    const enemyList = [...enemies];
     switch (this.targeting) {
       case Targeting.LAST:
         enemyList.reverse();
@@ -130,29 +156,36 @@ export default class Tower extends Graphics {
         break;
     }
 
-    const enemies = GridStore.getState().enemies;
-    for (var i = 0; i < enemies.length; i++) {
-      const enemy = enemies[i];
+    return enemyList;
+  }
+
+  getEnemyTargets(single = false) {
+    let targets = [];
+    const enemyList = this.sortEnemyTargets(GridStore.getState().enemies);
+
+    // const enemies = GridStore.getState().enemies;
+    for (var i = 0; i < enemyList.length; i++) {
+      const enemy = enemyList[i];
       const dist = gridDistance(
         this.position.x,
         this.position.y,
         enemy.position.x,
         enemy.position.y
       );
+
       if (Math.abs(dist) < this.getSight()) {
         if (this.isEnemyAlreadyDead(enemy)) {
           continue;
         }
 
-        if (this.shoot(enemy)) {
-          this.delay = this.maxDelay;
-
-          if (this.delay > 0) {
-            break;
-          }
+        targets.push(enemy);
+        if (single) {
+          break;
         }
       }
     }
+
+    return targets;
   }
 
   /**
@@ -218,9 +251,10 @@ export default class Tower extends Graphics {
 
     if (shootDistance < this.getRange()) {
       if (this.arc > 0) {
-        const arc = new Arc({
+        const arc = new Arc(this, {
           degrees: this.arc,
           range: this.getRange(),
+          damage: this.damage,
           distance: shootDistance / (distance / enemy.speed),
         });
         arc.setPath(
@@ -230,10 +264,11 @@ export default class Tower extends Graphics {
           prediction.y - this.position.y
         );
 
+        this.bullets.push(arc);
         this.parent.addChild(arc);
         GridStore.dispatch(addBullet(arc));
       } else {
-        const bullet = new Bullet({
+        const bullet = new Bullet(this, {
           type: this.type,
           enemy: enemy,
           damage: this.damage,
@@ -246,6 +281,8 @@ export default class Tower extends Graphics {
           prediction.x,
           prediction.y
         );
+
+        this.bullets.push(bullet);
         this.parent.addChild(bullet);
         GridStore.dispatch(addBullet(bullet));
       }

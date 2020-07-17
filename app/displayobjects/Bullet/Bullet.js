@@ -1,11 +1,12 @@
 import { Graphics } from "pixi.js";
-import { gridMoveTowards, gridDistance, isInCicle } from "../../grid/Grid";
+import { gridMoveTowards, gridDistance, isInCircle } from "../../grid/Grid";
 import { AnimationStore, GridStore } from "../../stores/Store";
 
 export default class Bullet extends Graphics {
-  constructor(args = {}) {
+  constructor(tower, args = {}) {
     super();
 
+    this.tower = tower;
     this.type = args.type ? args.type : 0;
     this.enemy = args.enemy ? args.enemy : null;
     this.damage = args.damage ? args.damage : 1;
@@ -160,7 +161,7 @@ export default class Bullet extends Graphics {
 
     const enemies = GridStore.getState().enemies;
     return (this.enemies = enemies.filter((enemy) =>
-      isInCicle(enemy.position.x, enemy.position.y, x, y, r)
+      isInCircle(enemy.position.x, enemy.position.y, x, y, r)
     ));
   }
 

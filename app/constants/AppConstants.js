@@ -8,7 +8,7 @@ export const Targeting = {
 };
 export const towerBaseStats = [
   {
-    delay: 30,
+    delay: 60,
     distance: 0,
     range: 1.5,
     sight: 2,
@@ -16,17 +16,18 @@ export const towerBaseStats = [
     splash: 0,
     cost: 100,
     target: Targeting.DEFAULT,
-    arc: 30,
   },
   {
     delay: 45,
     distance: 10,
     range: 2,
     sight: 3,
-    damage: 2,
+    damage: 1 / 60,
     splash: 0.4,
     cost: 125,
-    target: Targeting.DEFAULT,
+    target: Targeting.WEAKEST,
+    arc: 30,
+    maxBullets: 1,
   },
   {
     delay: 60,
