@@ -1,10 +1,5 @@
 import { Graphics } from "pixi.js";
-import {
-  gridMoveTowards,
-  gridDistance,
-  gridTileSize,
-  isInCicle,
-} from "../../grid/Grid";
+import { gridMoveTowards, gridDistance, isInCicle } from "../../grid/Grid";
 import { AnimationStore, GridStore } from "../../stores/Store";
 
 export default class Bullet extends Graphics {

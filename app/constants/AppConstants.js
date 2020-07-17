@@ -16,6 +16,7 @@ export const towerBaseStats = [
     splash: 0,
     cost: 100,
     target: Targeting.DEFAULT,
+    arc: 30,
   },
   {
     delay: 45,
@@ -32,7 +33,7 @@ export const towerBaseStats = [
     distance: 0,
     range: 4,
     sight: 6,
-    damage: 10,
+    damage: 6,
     splash: 0,
     cost: 150,
     target: Targeting.STRONGEST,
@@ -42,7 +43,7 @@ export const towerBaseStats = [
     distance: 50,
     range: 5,
     sight: 7,
-    damage: 7,
+    damage: 4,
     splash: 0.5,
     cost: 200,
     target: Targeting.STRONGEST,
@@ -60,7 +61,7 @@ export const towerUpgradeStats = [
   },
   {
     damage: (tower) => {
-      return tower.damage + Math.pow(4 * (tower.level - 1), 2);
+      return tower.damage + tower.damage * (tower.level - 1);
     },
     // maxDelay: (tower) => {
     //   return tower.maxDelay - 5 * (tower.level - 1);
@@ -68,7 +69,7 @@ export const towerUpgradeStats = [
   },
   {
     damage: (tower) => {
-      return tower.damage + Math.pow(20 * (tower.level - 1), 2);
+      return tower.damage + tower.damage * (tower.level - 1);
     },
     // maxDelay: (tower) => {
     //   return tower.maxDelay - 5 * (tower.level - 1);
@@ -76,7 +77,7 @@ export const towerUpgradeStats = [
   },
   {
     damage: (tower) => {
-      return tower.damage + Math.pow(14 * (tower.level - 1), 2);
+      return tower.damage + tower.damage * (tower.level - 1);
     },
     // maxDelay: (tower) => {
     //   return tower.maxDelay - 5 * (tower.level - 1);

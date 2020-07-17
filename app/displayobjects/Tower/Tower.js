@@ -4,6 +4,8 @@ import {
   gridTileSize,
   gridDistance,
   predictEnemyPosition,
+  calculateAngle360,
+  degreesToRadians,
 } from "../../grid/Grid";
 import { GridStore } from "../../stores/Store";
 import {
@@ -13,6 +15,7 @@ import {
 } from "../../constants/AppConstants";
 import Bullet from "../Bullet/Bullet";
 import { addBullet } from "../../stores/GridStore";
+import Arc from "../Bullet/Arc";
 
 export default class Tower extends Graphics {
   constructor(x, y, args = {}) {
@@ -47,6 +50,7 @@ export default class Tower extends Graphics {
     this.damage = stats[this.type].damage ? stats[this.type].damage : 1;
     this.maxDelay = stats[this.type].delay ? stats[this.type].delay : 10;
     this.splash = stats[this.type].splash ? stats[this.type].splash : 0;
+    this.arc = stats[this.type].arc ? stats[this.type].arc : 0;
     this.distance = stats[this.type].distance ? stats[this.type].distance : 10;
     this.cost = stats[this.type].cost ? stats[this.type].cost : 100;
     this.targeting = stats[this.type].targeting
@@ -94,7 +98,7 @@ export default class Tower extends Graphics {
   }
 
   getCost() {
-    return Math.max(this.cost, this.cost * this.level);
+    return this.cost * Math.pow(2, this.level - 1); //  Math.max(this.cost, this.cost * this.level);
   }
 
   update() {
@@ -213,21 +217,39 @@ export default class Tower extends Graphics {
     );
 
     if (shootDistance < this.getRange()) {
-      const bullet = new Bullet({
-        type: this.type,
-        enemy: enemy,
-        damage: this.damage,
-        distance: shootDistance / (distance / enemy.speed),
-        splash: this.getSplash(),
-      });
-      bullet.setPath(
-        this.position.x,
-        this.position.y,
-        prediction.x,
-        prediction.y
-      );
-      this.parent.addChild(bullet);
-      GridStore.dispatch(addBullet(bullet));
+      if (this.arc > 0) {
+        const arc = new Arc({
+          degrees: this.arc,
+          range: this.getRange(),
+          distance: shootDistance / (distance / enemy.speed),
+        });
+        arc.setPath(
+          this.position.x,
+          this.position.y,
+          prediction.x - this.position.x,
+          prediction.y - this.position.y
+        );
+
+        this.parent.addChild(arc);
+        GridStore.dispatch(addBullet(arc));
+      } else {
+        const bullet = new Bullet({
+          type: this.type,
+          enemy: enemy,
+          damage: this.damage,
+          distance: shootDistance / (distance / enemy.speed),
+          splash: this.getSplash(),
+        });
+        bullet.setPath(
+          this.position.x,
+          this.position.y,
+          prediction.x,
+          prediction.y
+        );
+        this.parent.addChild(bullet);
+        GridStore.dispatch(addBullet(bullet));
+      }
+
       this.isShooting = true;
       return true;
     }

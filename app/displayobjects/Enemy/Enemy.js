@@ -19,7 +19,7 @@ export default class Enemy extends Graphics {
   }
 
   getEnergy() {
-    return Math.floor((this.level + this.speed) * 3);
+    return Math.floor((this.level + this.speed) * 2);
   }
 
   drawEnemy(color = 0xffffff) {

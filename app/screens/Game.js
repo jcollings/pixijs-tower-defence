@@ -47,10 +47,15 @@ export default class Game extends Container {
 
     this.drawPath(path);
 
-    // this.addTower(3, 4, {
-    //   type: 2,
-    //   level: 1,
-    // });
+    this.addTower(3, 4, {
+      type: 0,
+      delay: 60,
+      cost: 0,
+      arc: 360,
+      range: 2,
+      damage: 0,
+      splash: 0,
+    });
 
     let keyZero = keyboard("0"),
       keyOne = keyboard("1"),
@@ -102,6 +107,7 @@ export default class Game extends Container {
         if (bullet.isComplete()) {
           bullet.destroy();
           GridStore.dispatch(removeBullet(bullet));
+          return;
         }
       });
 
@@ -120,7 +126,7 @@ export default class Game extends Container {
       });
     });
 
-    this.spawnEnemies(path);
+    this.spawnEnemies02(path);
 
     const fontSize = 12;
     let text = new Text("Energy: 0\nWave: 0", {
@@ -138,6 +144,104 @@ export default class Game extends Container {
     GridStore.subscribe(() => {
       const { energy, wave } = GridStore.getState();
       text.text = "Energy: " + energy + "\nWave: " + wave;
+    });
+  }
+
+  spawnEnemies02(path) {
+    let maxTime = 80;
+    let enemyTimer = 0;
+    let availablePoints = 1;
+    let maxSpawnTimer = 10;
+    let spawnTimer = 0;
+    const defaultMaxEnemies = 10;
+    let maxEnemies = defaultMaxEnemies;
+    let enemySequence = [1];
+    let lastGroup = -1;
+
+    AnimationStore.subscribe(() => {
+      // spawn enemies from list
+      spawnTimer++;
+      if (this.enemies.length > 0) {
+        if (spawnTimer > maxSpawnTimer) {
+          const { level, speed, group } = this.enemies.shift();
+          this.addEnemy(path, {
+            level: level,
+            speed: speed,
+          });
+          spawnTimer = 0;
+          if (lastGroup !== group) {
+            lastGroup = group;
+            // console.log("spawn");
+          }
+        }
+        return;
+      }
+
+      // generate new wave of enemies
+
+      enemyTimer++;
+      if (enemyTimer > maxTime) {
+        console.log("availablePoints", availablePoints);
+        enemyTimer = 0;
+
+        let pointsSpent = 0;
+        // 1,3,7
+        const currentEnemySequenceIndex = enemySequence.length - 1;
+        if (
+          enemySequence[currentEnemySequenceIndex] * maxEnemies <=
+          availablePoints
+        ) {
+          enemySequence.push(currentEnemySequenceIndex);
+          maxEnemies++;
+          console.log("sequence", maxEnemies, enemySequence);
+        }
+
+        let spawnedEnemyLevels = [];
+        let lastPointIndex = enemySequence.length - 1;
+        let groupCounter = 0;
+        while (pointsSpent < availablePoints) {
+          while (
+            enemySequence[lastPointIndex] >
+            availablePoints - pointsSpent
+          ) {
+            lastPointIndex--;
+          }
+
+          // if (enemyStats.length - 1 < lastPointIndex) {
+          //   lastPointIndex = enemyStats.length - 1;
+          // }
+
+          const cost = lastPointIndex + 1; //enemySequence[lastPointIndex];
+          // const enemyData = enemyStats[lastPointIndex];
+
+          const level = lastPointIndex + 1;
+          const speed = 1;
+
+          // const enemyQuantity = Math.max(
+          //   enemySequence.length - 1 - lastPointIndex,
+          //   1
+          // );
+          const enemyQuantity = 1;
+          for (let i = 0; i < enemyQuantity; i++) {
+            this.enemies.push({
+              level: level,
+              speed: speed,
+              group: groupCounter,
+            });
+          }
+
+          spawnedEnemyLevels.push([level, enemyQuantity]);
+
+          pointsSpent += cost;
+          groupCounter++;
+          // availablePoints++;
+        }
+
+        GridStore.dispatch(addWave(1));
+
+        // console.log("spawned", spawnedEnemyLevels);
+        availablePoints += 1 + maxEnemies - defaultMaxEnemies;
+      }
     });
   }
 
@@ -177,8 +281,6 @@ export default class Game extends Container {
         // maxTime -= 0.5; //0.05;
         // maxTime = Math.max(maxTime, 10);
         enemyTimer = 0;
-
-        this.spawnEnemyQueue01();
 
         let pointsSpent = 0;
         // 1,3,7
@@ -240,8 +342,6 @@ export default class Game extends Container {
       }
     });
   }
-
-  spawnEnemyQueue01() {}
 
   spawnEnemy(path, args = {}) {
     this.addEnemy(path, args);
