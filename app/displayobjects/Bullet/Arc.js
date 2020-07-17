@@ -134,7 +134,6 @@ export default class Arc extends Graphics {
     });
 
     if (enemies.length > 0) {
-      console.log("take damage", this.damage);
       enemies.forEach((enemy) => (enemy.health -= this.damage)); // this.damage));
     }
 
